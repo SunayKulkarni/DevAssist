@@ -6,6 +6,8 @@ import { UserContext } from '../context/user.context.jsx'
 import Markdown from 'markdown-to-jsx'
 import { RiFolder3Line, RiFolderOpenLine, RiFile3Line, RiAddLine } from 'react-icons/ri'
 import { getWebContainer } from '../config/webContainer.js'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 
 const Project = () => {
@@ -40,10 +42,14 @@ const Project = () => {
     const messageBox = React.createRef()
     const lineNumberRef = useRef(null);
     const textareaRef = useRef(null);
+    const highlightedCodeRef = useRef(null);
     const [activeLine, setActiveLine] = useState(1);
     const [editorWidth, setEditorWidth] = useState(600);
+    const [chatWidth, setChatWidth] = useState(384); // w-96 = 384px
     const resizerRef = useRef(null);
+    const chatResizerRef = useRef(null);
     const [isResizing, setIsResizing] = useState(false);
+    const [isChatResizing, setIsChatResizing] = useState(false);
     const [iframeUrl, setIframeUrl] = useState(null)
 
     // Add new states for container status
@@ -57,6 +63,38 @@ const Project = () => {
     const [isOutputModalOpen, setIsOutputModalOpen] = useState(false);
     // Feedback states for output modal buttons
     const [reloadedStatus, setReloadedStatus] = useState(false);
+
+    const getLanguageFromFilename = (filename = '') => {
+        const ext = filename.split('.').pop()?.toLowerCase();
+        const languageMap = {
+            js: 'javascript',
+            jsx: 'jsx',
+            ts: 'typescript',
+            tsx: 'tsx',
+            json: 'json',
+            html: 'markup',
+            htm: 'markup',
+            css: 'css',
+            scss: 'scss',
+            sass: 'sass',
+            md: 'markdown',
+            py: 'python',
+            java: 'java',
+            c: 'c',
+            cpp: 'cpp',
+            cs: 'csharp',
+            go: 'go',
+            rs: 'rust',
+            php: 'php',
+            rb: 'ruby',
+            sh: 'bash',
+            yml: 'yaml',
+            yaml: 'yaml',
+            xml: 'markup'
+        };
+
+        return languageMap[ext] || 'javascript';
+    };
 
     const handleUserClick = (id) => {
         setSelectedUserId(prevSelectedUserId => {
@@ -469,6 +507,10 @@ const Project = () => {
         if (lineNumberRef.current) {
             lineNumberRef.current.scrollTop = e.target.scrollTop;
         }
+        if (highlightedCodeRef.current) {
+            highlightedCodeRef.current.scrollTop = e.target.scrollTop;
+            highlightedCodeRef.current.scrollLeft = e.target.scrollLeft;
+        }
         updateActiveLine();
     };
 
@@ -505,6 +547,23 @@ const Project = () => {
             window.removeEventListener('mouseup', handleMouseUp);
         };
     }, [isResizing]);
+
+    // Resizable chat panel
+    useEffect(() => {
+        const handleMouseMove = (e) => {
+            if (!isChatResizing) return;
+            setChatWidth(Math.max(280, Math.min(600, e.clientX)));
+        };
+        const handleMouseUp = () => setIsChatResizing(false);
+        if (isChatResizing) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+        }
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isChatResizing]);
 
     // Helper to toggle folder open/close
     const toggleFolder = (path) => {
@@ -821,55 +880,61 @@ const Project = () => {
     };
 
     return (
-        <main className="h-screen min-h-screen w-screen flex bg-slate-900 text-slate-100">
+        <main className="h-screen min-h-screen w-screen flex bg-slate-950 text-slate-100 overflow-hidden">
             {/* Left Panel: Chat & Collaborators */}
-            <section className="left relative flex flex-col h-full w-96 bg-gradient-to-br from-blue-900 via-slate-900 to-blue-800 shadow-2xl rounded-l-2xl border-r border-blue-900/70 backdrop-blur-md">
+            <section 
+                style={{ width: chatWidth, transition: isChatResizing ? 'none' : 'width 0.2s' }}
+                className="left relative flex flex-col h-full bg-slate-900 shadow-2xl border-r border-slate-800 backdrop-blur-sm min-w-[280px] max-w-[600px]">
+                {/* Resizer for chat panel */}
+                <div
+                    ref={chatResizerRef}
+                    style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 4, cursor: 'ew-resize', zIndex: 20 }}
+                    onMouseDown={() => setIsChatResizing(true)}
+                    className="bg-slate-700/20 hover:bg-blue-600/50 transition-colors"
+                />
                 {/* Header Box */}
-                <header className="flex flex-col items-center p-4 w-full gap-2 bg-gradient-to-br from-blue-900 via-slate-900 to-blue-800 shadow-2xl rounded-l-2xl border-r border-blue-900/70 backdrop-blur-md">
-                    <div className="flex justify-start absolute left-1 top-1">
-                        <Link to="/" className="flex items-center gap-2 px-2 py-1 bg-blue-100 text-blue-500 rounded-full hover:bg-blue-200 transition">
+                <header className="flex flex-col items-start p-5 w-full gap-4 bg-slate-800/50 border-b border-slate-700">
+                    <div className="flex justify-between items-center w-full">
+                        <div>
+                            <h1 className="text-xl font-bold text-slate-100">{project?.name}</h1>
+                            <p className="text-sm text-slate-400 mt-1">
+                                <i className="ri-user-line text-xs mr-1"></i>
+                                {user?.email}
+                            </p>
+                        </div>
+                        <Link to="/" className="p-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition text-slate-300 hover:text-blue-400">
                             <i className="ri-home-4-line text-lg"></i>
                         </Link>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1 bg-blue-100 text-blue-500 text-xs font-medium px-2 py-1 rounded-full">
-                            <i className="ri-user-fill text-sm"></i>
-                        </div>
-                        <span className="text-lg font-semibold text-blue-500">{user?.email}</span>
-                    </div>
-                    <div className="flex flex-row items-center gap-2">
-                        <div className="text-sm text-blue-300">Project:</div>
-                        <div className="text-lg font-semibold text-blue-500">{project?.name}</div>
-                    </div>
 
-                    <div className="flex flex-row items-center justify-between w-full">
+                    <div className="flex gap-2 w-full">
                         {/* Add Collaborator Button */}
                         <button
                             onClick={() => setIsModalOpen(true)}
-                            className="flex gap-2 items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md transition duration-200 transform hover:scale-105"
+                            className="flex-1 flex gap-2 items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm transition duration-200 text-sm font-medium"
                         >
-                            <i className="ri-user-add-line text-base"></i>
-                            <span className="text-sm">Add Collaborator</span>
+                            <i className="ri-user-add-line"></i>
+                            <span>Add</span>
                         </button>
 
                         {/* Show Collaborators Button */}
                         <button
                             onClick={() => setIsSidePanelOpen(!isSidePanelOpen)}
-                            className="flex gap-2 items-center px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg shadow-md transition duration-200 transform hover:scale-105"
+                            className="flex-1 flex gap-2 items-center justify-center px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg shadow-sm transition duration-200 text-sm font-medium"
                         >
-                            <i className="ri-group-line text-base"></i>
-                            <span className="text-sm">View Collaborators</span>
+                            <i className="ri-group-line"></i>
+                            <span>Collaborators</span>
                         </button>
                     </div>
 
                 </header>
-                <div className="flex flex-col flex-grow h-0"> {/* This wraps the chat area and makes it fill the panel */}
+                <div className="flex flex-col flex-grow h-0">
                     {/* Chat Area */}
-                    <div className="conversation-area flex flex-col h-full px-0 py-0 bg-slate-800 w-full max-w-[420px] min-w-[320px] rounded-2xl shadow-xl border border-slate-800 overflow-hidden">
+                    <div className="conversation-area flex flex-col h-full px-0 py-0 bg-slate-900 w-full rounded-xl shadow-lg border border-slate-800 overflow-hidden">
                         {/* Header Bar */}
-                        <div className="flex items-center justify-center gap-2 px-5 py-3 bg-slate-900 border-b border-slate-700">
-                            <i className="ri-chat-3-line text-blue-400 text-xl"></i>
-                            <span className="font-semibold text-blue-300 text-lg">Messages</span>
+                        <div className="flex items-center justify-center gap-2 px-5 py-3 bg-slate-800 border-b border-slate-700">
+                            <i className="ri-chat-3-line text-blue-400 text-lg"></i>
+                            <span className="font-semibold text-slate-100 text-base">Messages</span>
                         </div>
                         {/* Scrollable messages */}
                         <div
@@ -934,27 +999,31 @@ const Project = () => {
                     </div>
                 </div>
                 {/* Side Panel: Collaborators */}
-                <div className={`sidePanel w-full h-full flex flex-col gap-2 bg-slate-800 shadow-xl absolute transition-all duration-300 z-30 ${isSidePanelOpen ? 'left-0' : '-left-full'} top-0 rounded-l-2xl`}>
-                    <header className="flex justify-between items-center p-4 w-full bg-gradient-to-br from-blue-900 via-slate-900 to-blue-800 shadow-2xl rounded-l-2xl border-r border-blue-900/70 backdrop-blur-md">
-                        <h1 className="font-semibold text-lg text-blue-300">Collaborators</h1>
-                        <button onClick={() => setIsSidePanelOpen(!isSidePanelOpen)} className="p-2 rounded-full hover:bg-slate-700 transition">
+                <div className={`sidePanel w-full h-full flex flex-col gap-0 bg-slate-800 shadow-2xl absolute transition-all duration-300 z-30 ${isSidePanelOpen ? 'left-0' : '-left-full'} top-0`}>
+                    <header className="flex justify-between items-center p-4 w-full bg-slate-800 border-b border-slate-700">
+                        <h1 className="font-semibold text-lg text-slate-100">Team Members</h1>
+                        <button onClick={() => setIsSidePanelOpen(!isSidePanelOpen)} className="p-2 rounded-lg hover:bg-slate-700 transition text-slate-400 hover:text-slate-100">
                             <i className="ri-close-fill text-xl"></i>
                         </button>
                     </header>
-                    <div className="flex flex-col gap-2 p-4 overflow-y-auto">
+                    <div className="flex flex-col gap-2 p-4 overflow-y-auto flex-grow">
                         {(!project.users || project.users.length === 0) && (
-                            <div className="text-slate-500 text-center py-4">No collaborators found for this project.</div>
+                            <div className="text-slate-400 text-center py-8">
+                                <div className="text-sm">No collaborators yet</div>
+                            </div>
                         )}
                         {project.users && project.users.map((u, idx) => {
                             const userObj = typeof u === 'object' && u.email ? u : users.find(usr => usr._id === (u._id || u));
                             if (!userObj) return null;
                             return (
-                                <div key={userObj._id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-700 transition">
-                                    <div className="w-8 h-8 rounded-full bg-blue-900 flex items-center justify-center text-blue-300 font-bold">
+                                <div key={userObj._id} className="flex items-center gap-3 p-3 rounded-lg bg-slate-700/30 hover:bg-slate-700/50 transition">
+                                    <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
                                         {userObj.email[0].toUpperCase()}
                                     </div>
-                                    <span className="text-slate-100">{userObj.email}</span>
-                                    <span className={`ml-auto px-2 py-1 rounded-full text-xs font-semibold ${idx === 0 ? 'bg-yellow-200 text-yellow-800' : 'bg-slate-700 text-slate-300'}`}>{idx === 0 ? 'Owner' : 'Member'}</span>
+                                    <div className="flex-grow min-w-0">
+                                        <p className="text-sm font-medium text-slate-100 truncate">{userObj.email}</p>
+                                    </div>
+                                    {idx === 0 && <span className="px-2 py-1 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-300">Owner</span>}
                                 </div>
                             );
                         })}
@@ -962,41 +1031,41 @@ const Project = () => {
                 </div>
                 {/* Collaborator Modal */}
                 {isModalOpen && (
-                    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-                        <div className="bg-slate-800 rounded-2xl shadow-2xl p-8 w-full max-w-md border border-slate-700">
-                            <div className="flex justify-between items-center mb-6">
-                                <h2 className="text-xl font-bold text-blue-300">Add Collaborators</h2>
-                                <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-200 transition p-2 hover:bg-slate-700 rounded-lg">
-                                    <i className="ri-close-line text-2xl"></i>
+                    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
+                        <div className="bg-slate-800 rounded-xl shadow-2xl p-6 w-full max-w-md border border-slate-700">
+                            <div className="flex justify-between items-center mb-5">
+                                <h2 className="text-lg font-bold text-slate-100">Add Team Members</h2>
+                                <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-200 transition p-1 hover:bg-slate-700 rounded-lg">
+                                    <i className="ri-close-line text-xl"></i>
                                 </button>
                             </div>
-                            <div className="flex flex-col gap-2 max-h-60 overflow-y-auto mb-4">
+                            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto mb-4 bg-slate-900/50 rounded-lg p-3">
                                 {usersNotInProject.length === 0 && (
-                                    <div className="text-slate-500 text-center py-4">All users are already collaborators.</div>
+                                    <div className="text-slate-400 text-center py-6 text-sm">All users are team members</div>
                                 )}
                                 {usersNotInProject.map((u) => (
                                     <button
                                         key={u._id}
                                         onClick={() => handleUserClick(u._id)}
-                                        className={`flex items-center gap-3 p-2 rounded-lg border transition ${selectedUserId.has(u._id) ? 'bg-blue-900 border-blue-400 text-blue-300' : 'bg-slate-800 border-slate-700 text-slate-100'} hover:bg-blue-800`}
+                                        className={`flex items-center gap-3 p-3 rounded-lg border-2 transition ${selectedUserId.has(u._id) ? 'bg-blue-900/40 border-blue-500 text-slate-100' : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'}`}
                                     >
-                                        <div className="w-8 h-8 rounded-full bg-blue-900 flex items-center justify-center text-blue-300 font-bold">
+                                        <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-slate-100 font-semibold text-sm flex-shrink-0">
                                             {u.email[0].toUpperCase()}
                                         </div>
-                                        <span>{u.email}</span>
-                                        {selectedUserId.has(u._id) && <i className="ri-check-line ml-auto text-blue-400"></i>}
+                                        <span className="flex-grow text-left text-sm">{u.email}</span>
+                                        {selectedUserId.has(u._id) && <i className="ri-check-line text-blue-400 text-lg"></i>}
                                     </button>
                                 ))}
                             </div>
                             <div className="flex justify-end gap-3">
                                 <button
                                     onClick={() => setIsModalOpen(false)}
-                                    className="px-4 py-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700 rounded-lg transition"
+                                    className="px-4 py-2 text-slate-300 hover:text-slate-100 hover:bg-slate-700 rounded-lg transition text-sm font-medium"
                                 >Cancel</button>
                                 <button
                                     onClick={addCollaborators}
-                                    className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow transition"
-                                    disabled={selectedUserId.size === 0 || usersNotInProject.length === 0}
+                                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={selectedUserId.size === 0}
                                 >Add</button>
                             </div>
                         </div>
@@ -1004,40 +1073,40 @@ const Project = () => {
                 )}
             </section>
             {/* File Explorer & Code Editor */}
-            <section className="flex flex-grow h-full">
+            <section className="flex flex-grow h-full gap-0 min-w-0">
                 {/* File Explorer */}
-                <div className="explorer h-full w-64 bg-slate-800/50 border-r border-slate-700/50 shadow-lg flex flex-col">
+                <div className="explorer h-full w-72 bg-slate-800 border-r border-slate-700 shadow-lg flex flex-col">
                     {/* File Explorer Header */}
-                    <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700/50">
+                    <div className="flex items-center justify-between px-4 py-3 bg-slate-800 border-b border-slate-700">
                         <div className="flex items-center gap-2">
-                            <RiFolder3Line className="text-blue-400" />
-                            <span className="text-sm font-medium text-blue-300">Files</span>
+                            <RiFolder3Line className="text-blue-400 text-lg" />
+                            <span className="text-sm font-semibold text-slate-100">Files</span>
                         </div>
                         <div className="flex items-center gap-1">
                             {/* New File Button */}
                             <button
                                 onClick={() => setIsCreatingFile(true)}
-                                className="p-1.5 hover:bg-slate-700/50 rounded-lg transition-colors"
+                                className="p-1.5 hover:bg-slate-700 rounded transition-colors text-slate-300 hover:text-blue-400"
                                 title="New File (Ctrl/Cmd + N)"
                             >
-                                <i className="ri-file-add-line text-slate-400 hover:text-blue-400" />
+                                <i className="ri-file-add-line text-base" />
                             </button>
                             {/* New Folder Button */}
                             <button
                                 onClick={() => setIsCreatingFolder(true)}
-                                className="p-1.5 hover:bg-slate-700/50 rounded-lg transition-colors"
+                                className="p-1.5 hover:bg-slate-700 rounded transition-colors text-slate-300 hover:text-green-400"
                                 title="New Folder"
                             >
-                                <i className="ri-folder-add-line text-slate-400 hover:text-green-400" />
+                                <i className="ri-folder-add-line text-base" />
                             </button>
                         </div>
                     </div>
                     {/* File Tree (recursive) */}
-                    <div className="flex-grow overflow-y-auto p-2 space-y-1">
+                    <div className="flex-grow overflow-y-auto p-2 space-y-0.5">
                         {!fileTree || Object.keys(fileTree).length === 0 ? (
-                            <div className="text-slate-400 text-center py-4">
-                                <div className="text-sm mb-2">No files found.</div>
-                                <div className="text-xs text-slate-500">Click the + button to create a new file</div>
+                            <div className="text-slate-400 text-center py-8">
+                                <div className="text-sm mb-2">No files</div>
+                                <div className="text-xs text-slate-500">Use + buttons to add</div>
                             </div>
                         ) : (
                             renderFileTree(fileTree)
@@ -1047,110 +1116,98 @@ const Project = () => {
 
                 {/* Code Editor */}
                 <div ref={resizerRef} style={{ width: editorWidth, minWidth: 300, maxWidth: 900, transition: isResizing ? 'none' : 'width 0.2s' }}
-                    className="code-editor flex flex-col flex-grow h-full bg-slate-900 relative">
+                    className="code-editor flex flex-col flex-grow h-full bg-slate-950 relative">
                     {/* Resizer */}
                     <div
-                        style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 6, cursor: 'ew-resize', zIndex: 10 }}
+                        style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 4, cursor: 'ew-resize', zIndex: 10 }}
                         onMouseDown={() => setIsResizing(true)}
-                        className="bg-blue-900/10 hover:bg-blue-500/30 transition-colors"
+                        className="bg-slate-700/20 hover:bg-blue-600/50 transition-colors"
                     />
                     {/* Editor Tabs */}
-                    <div className="flex border-b border-slate-800 bg-slate-800/50 overflow-x-auto">
+                    <div className="flex border-b border-slate-700 bg-slate-900 overflow-x-auto">
 
                         <div className="bottom flex flex-grow">
                             {openFiles.map((file) => (
                                 <div
                                     key={file}
-                                    className={`group flex items-center gap-2 px-4 py-2 border-r border-slate-700/50 min-w-[120px] max-w-[200px]
+                                    className={`group flex items-center gap-2 px-4 py-2.5 border-r border-slate-700 min-w-[120px] max-w-[200px] text-sm
                                         ${currentFile === file
-                                            ? 'bg-slate-900 text-blue-300'
-                                            : 'bg-slate-800/50 text-slate-400 hover:text-slate-300'
+                                            ? 'bg-slate-800 text-slate-100 border-b-2 border-b-blue-500'
+                                            : 'bg-slate-900/50 text-slate-400 hover:text-slate-300'
                                         }`}
                                 >
                                     <button
                                         onClick={() => setCurrentFile(file)}
                                         className="flex items-center gap-2 focus:outline-none flex-grow min-w-0"
                                     >
-                                        <i className="ri-file-3-line text-sm flex-shrink-0"></i>
-                                        <span className="text-sm truncate">{file}</span>
+                                        <i className="ri-file-3-line flex-shrink-0"></i>
+                                        <span className="truncate">{file.split('/').pop()}</span>
                                     </button>
                                     <button
                                         onClick={() => handleCloseFile(file)}
-                                        className="p-1 rounded hover:bg-red-900/50 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                                        className="p-1 rounded hover:bg-red-900/40 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 text-red-400"
                                     >
-                                        <i className="ri-close-line text-sm text-red-400 hover:text-red-300"></i>
+                                        <i className="ri-close-line text-sm"></i>
                                     </button>
                                 </div>
                             ))}
                         </div>
 
-                        <div className="actions flex gap-2">
+                        <div className="actions flex gap-1 px-2 py-1">
                             <button
                                 onClick={handleRunServer}
                                 className={
-                                    `relative flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200
+                                    `relative flex items-center gap-2 px-3 py-2 rounded transition-all duration-200 text-sm font-medium
                                     ${containerStatus === 'running'
-                                        ? 'bg-green-600 hover:bg-green-700'
+                                        ? 'bg-green-600 hover:bg-green-700 text-white'
                                         : containerStatus === 'error'
-                                            ? 'bg-red-600 hover:bg-red-700'
-                                            : 'bg-blue-600 hover:bg-blue-700'}
-                                    text-white font-medium shadow-lg hover:shadow-xl
+                                            ? 'bg-red-600 hover:bg-red-700 text-white'
+                                            : 'bg-blue-600 hover:bg-blue-700 text-white'}
+                                    shadow hover:shadow-lg
                                     disabled:opacity-50 disabled:cursor-not-allowed`
                                 }
                                 disabled={containerStatus === 'installing' || containerStatus === 'starting'}
                             >
-                                <div className="flex items-center gap-2">
-                                    {containerStatus === 'installing' || containerStatus === 'starting' ? (
-                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                    ) : containerStatus === 'running' ? (
-                                        <i className="ri-check-line text-lg" />
-                                    ) : containerStatus === 'error' ? (
-                                        <i className="ri-error-warning-line text-lg" />
-                                    ) : (
-                                        <i className="ri-play-line text-lg" />
-                                    )}
-                                    <span>
-                                        {containerStatus === 'installing' ? 'Installing...' :
-                                            containerStatus === 'starting' ? 'Starting...' :
-                                                containerStatus === 'running' ? 'Running' :
-                                                    containerStatus === 'error' ? 'Error' :
-                                                        'Run'}
-                                    </span>
-                                </div>
-                                {statusMessage && (
-                                    <div className="absolute -bottom-8 left-0 right-0 text-xs text-center text-slate-400">
-                                        {statusMessage}
-                                    </div>
+                                {containerStatus === 'installing' || containerStatus === 'starting' ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        <span>Wait...</span>
+                                    </>
+                                ) : containerStatus === 'running' ? (
+                                    <>
+                                        <i className="ri-check-line" />
+                                        <span>Running</span>
+                                    </>
+                                ) : containerStatus === 'error' ? (
+                                    <>
+                                        <i className="ri-error-warning-line" />
+                                        <span>Error</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <i className="ri-play-line" />
+                                        <span>Run</span>
+                                    </>
                                 )}
                             </button>
-                            {/* Output Button (shows after successful execution) */}
+                            {/* Output Button */}
                             {containerStatus === 'running' && iframeUrl && (
                                 <button
                                     onClick={() => setIsOutputModalOpen(true)}
-                                    className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
+                                    className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition text-sm font-medium"
                                 >
-                                    <i className="ri-window-line text-lg" />
-                                    <span>Output</span>
+                                    <i className="ri-window-line" />
+                                    <span>View</span>
                                 </button>
                             )}
                             {/* Close Server Button */}
                             {(containerStatus === 'running' || containerStatus === 'error') && (
                                 <button
                                     onClick={handleCloseServer}
-                                    className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
+                                    className="flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition text-sm font-medium"
                                 >
-                                    <i className="ri-stop-line text-lg" />
+                                    <i className="ri-stop-line" />
                                     <span>Stop</span>
-                                </button>
-                            )}
-                            {/* Force Stop Button */}
-                            {(containerStatus === 'error' || currentProcess) && (
-                                <button
-                                    onClick={handleForceStop}
-                                    className="flex items-center gap-2 px-4 py-2 bg-red-800 hover:bg-red-900 text-white rounded-lg transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
-                                >
-                                    <i className="ri-close-circle-line text-lg" />
-                                    <span>Force Stop</span>
                                 </button>
                             )}
                         </div>
@@ -1281,9 +1338,37 @@ const Project = () => {
                                 className="flex-grow h-full overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                                 style={{ position: 'relative' }}
                             >
+                                <div
+                                    ref={highlightedCodeRef}
+                                    className="absolute inset-0 overflow-auto pointer-events-none"
+                                    aria-hidden="true"
+                                >
+                                    <SyntaxHighlighter
+                                        language={getLanguageFromFilename(currentFile || '')}
+                                        style={oneDark}
+                                        wrapLongLines
+                                        customStyle={{
+                                            margin: 0,
+                                            background: 'transparent',
+                                            minHeight: '100%',
+                                            lineHeight: '1.5em',
+                                            fontSize: '14px',
+                                            fontFamily: 'Fira Mono, Menlo, Monaco, Consolas, monospace',
+                                            padding: '0.5rem',
+                                        }}
+                                        codeTagProps={{
+                                            style: {
+                                                fontFamily: 'Fira Mono, Menlo, Monaco, Consolas, monospace',
+                                            },
+                                        }}
+                                    >
+                                        {currentFile ? (getFileNodeByPath(fileTree, currentFile)?.contents || ' ') : ' '}
+                                    </SyntaxHighlighter>
+                                </div>
+
                                 <textarea
                                     ref={textareaRef}
-                                    className="w-full h-full min-h-0 px-4 py-4 border-none outline-none font-mono text-sm bg-transparent text-slate-200 resize-none focus:ring-0 focus:outline-none"
+                                    className="absolute inset-0 w-full h-full min-h-0 border-none outline-none font-mono text-sm bg-transparent text-transparent caret-slate-200 resize-none focus:ring-0 focus:outline-none selection:bg-blue-500/30"
                                     value={currentFile ? (getFileNodeByPath(fileTree, currentFile)?.contents || '') : ''}
                                     onChange={(e) => {
                                         // Update the nested fileTree immutably
@@ -1348,7 +1433,9 @@ const Project = () => {
                                         overflow: 'auto',
                                         background: 'transparent',
                                         fontSize: '14px',
-                                        padding: '0.5rem'
+                                        padding: '0.5rem',
+                                        color: 'transparent',
+                                        caretColor: '#e2e8f0'
                                     }}
                                     onScroll={handleEditorScroll}
                                     onClick={updateActiveLine}
