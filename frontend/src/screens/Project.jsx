@@ -503,6 +503,7 @@ const Project = () => {
     useEffect(() => {
         if (!project) return; // Don't initialize socket if project is not loaded
 
+        console.log('Initializing socket for project:', project._id);
         initializeSocket(project._id); // Initialize socket connection
 
         const initializeContainer = async () => {
@@ -524,15 +525,17 @@ const Project = () => {
         // Initialize container immediately
         initializeContainer();
 
+        // Set up socket listeners
         recieveMessage('chat-history', (history) => {
+            console.log('Received chat history:', history);
             setMessages(history.map(msg => ({
                 ...msg,
                 type: msg.sender?.email === user?.email ? 'outgoing' : 'incoming'
             })));
         });
 
-        let currentWebContainer = null;
         recieveMessage('project-message', async data => {
+            console.log('Received project-message:', data);
             try {
                 // Handle both old format (data.message as string) and new format (data as full object)
                 let message;
@@ -556,41 +559,48 @@ const Project = () => {
                 }
 
                 if (message.fileTree) {
+                    console.log('Processing fileTree from AI:', message.fileTree);
                     // Normalize the fileTree to handle both flat and nested structures
                     const normalizedTree = normalizeFileTree(message.fileTree);
+                    console.log('Normalized fileTree:', normalizedTree);
                     
                     patchExpressPortInFileTree(normalizedTree); // Patch before mounting
                     patchPackageJsonStartScript(normalizedTree); // Patch start script
                     patchStaticFrontendProject(normalizedTree); // Patch static frontend
 
                     // Get the latest webContainer instance
-                    if (!currentWebContainer) {
-                        currentWebContainer = await getWebContainer();
-                        setWebContainer(currentWebContainer);
-                    }
+                    const container = await getWebContainer();
+                    setWebContainer(container);
 
-                    if (currentWebContainer) {
+                    if (container) {
                         try {
-                            await currentWebContainer.mount(normalizedTree);
+                            await container.mount(normalizedTree);
+                            console.log('Files mounted to container');
                             setFileTree(prev => {
                                 // Use deep merge to properly handle nested structures
-                                return deepMergeFileTree(prev, normalizedTree);
+                                const merged = deepMergeFileTree(prev, normalizedTree);
+                                console.log('Updated fileTree state:', merged);
+                                return merged;
                             });
-                            console.log('Files mounted successfully:', normalizedTree);
                         } catch (mountError) {
                             console.error('Error mounting files to WebContainer:', mountError);
                         }
                     } else {
-                        console.error('WebContainer not initialized');
+                        console.error('WebContainer not available');
                     }
                 }
 
-                setMessages(prevMessages => [...prevMessages, { 
-                    ...data, 
-                    message: messageToDisplay, 
-                    type: 'incoming',
-                    sender: data.sender || { email: 'AI', type: 'ai' }
-                }]);
+                // Add message to chat
+                setMessages(prevMessages => {
+                    const updated = [...prevMessages, { 
+                        ...data, 
+                        message: messageToDisplay, 
+                        type: 'incoming',
+                        sender: data.sender || { email: 'AI', type: 'ai' }
+                    }];
+                    console.log('Updated messages:', updated);
+                    return updated;
+                });
             } catch (error) {
                 console.error('Error processing message:', error);
             }
@@ -598,9 +608,8 @@ const Project = () => {
 
         // Cleanup function
         return () => {
-            if (currentWebContainer) {
-                currentWebContainer = null;
-            }
+            console.log('Cleaning up socket listeners for project:', project._id);
+            // Socket listeners will be re-registered on next mount
         };
     }, [project, user?.email]);
 
