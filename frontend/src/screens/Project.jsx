@@ -564,29 +564,38 @@ const Project = () => {
                     const normalizedTree = normalizeFileTree(message.fileTree);
                     console.log('Normalized fileTree:', normalizedTree);
                     
-                    patchExpressPortInFileTree(normalizedTree); // Patch before mounting
-                    patchPackageJsonStartScript(normalizedTree); // Patch start script
-                    patchStaticFrontendProject(normalizedTree); // Patch static frontend
+                    try {
+                        patchExpressPortInFileTree(normalizedTree); // Patch before mounting
+                        patchPackageJsonStartScript(normalizedTree); // Patch start script
+                        patchStaticFrontendProject(normalizedTree); // Patch static frontend
+                        console.log('Patching complete');
+                    } catch (patchError) {
+                        console.error('Error during patching:', patchError);
+                    }
 
-                    // Get the latest webContainer instance
-                    const container = await getWebContainer();
-                    setWebContainer(container);
+                    try {
+                        // Get the latest webContainer instance
+                        console.log('Getting webContainer...');
+                        const container = await getWebContainer();
+                        console.log('Got container:', !!container);
+                        setWebContainer(container);
 
-                    if (container) {
-                        try {
+                        if (container) {
+                            console.log('Mounting normalized tree to container...');
                             await container.mount(normalizedTree);
-                            console.log('Files mounted to container');
+                            console.log('Files mounted to container successfully');
+                            
                             setFileTree(prev => {
                                 // Use deep merge to properly handle nested structures
                                 const merged = deepMergeFileTree(prev, normalizedTree);
-                                console.log('Updated fileTree state:', merged);
+                                console.log('Updated fileTree state with', Object.keys(merged).length, 'top-level items');
                                 return merged;
                             });
-                        } catch (mountError) {
-                            console.error('Error mounting files to WebContainer:', mountError);
+                        } else {
+                            console.error('Container is null after getWebContainer()');
                         }
-                    } else {
-                        console.error('WebContainer not available');
+                    } catch (mountError) {
+                        console.error('Error mounting files to WebContainer:', mountError, mountError.stack);
                     }
                 }
 
