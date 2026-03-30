@@ -490,6 +490,10 @@ const Project = () => {
                 console.log(response.data.project)
                 setProject(response.data.project)
             })
+            .catch(error => {
+                console.error('Failed to fetch project details:', error)
+                setPageError('Failed to load this project. It may not exist or you may not have access.')
+            })
 
         axios.get('/users/all')
             .then(response => {

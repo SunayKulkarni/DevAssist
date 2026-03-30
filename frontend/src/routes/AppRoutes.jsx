@@ -14,7 +14,9 @@ const AppRouter = () => {
             <Route path="/login" element={ <Login/> } />
             <Route path="/register" element={ <Register/> } />
             <Route path="/project/:projectId" element={ <UserAuth><Project/></UserAuth> } />
+            <Route path="/:projectId" element={ <UserAuth><Project/></UserAuth> } />
             <Route path="/project" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
             
         </Routes>
     </BrowserRouter>
