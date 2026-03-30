@@ -488,7 +488,13 @@ const Project = () => {
         axios.get(`/projects/get-project/${projectId}`)
             .then(response => {
                 console.log(response.data.project)
-                setProject(response.data.project)
+                const loadedProject = response?.data?.project
+                if (!loadedProject || typeof loadedProject !== 'object') {
+                    setPageError('Failed to load this project. It may not exist or you may not have access.')
+                    setProject({})
+                    return
+                }
+                setProject(loadedProject)
             })
             .catch(error => {
                 console.error('Failed to fetch project details:', error)
@@ -518,7 +524,7 @@ const Project = () => {
     }, [messages, messageBox])
 
     // Compute users not in the project
-    const projectUserIds = new Set((project.users || []).map(u => typeof u === 'object' ? u._id : u));
+    const projectUserIds = new Set((project?.users || []).map(u => typeof u === 'object' ? u._id : u));
     const usersNotInProject = users.filter(u => !projectUserIds.has(u._id));
 
     // Sync scroll between textarea and line numbers
@@ -1057,12 +1063,12 @@ const Project = () => {
                         </button>
                     </header>
                     <div className="flex flex-col gap-2 p-4 overflow-y-auto flex-grow">
-                        {(!project.users || project.users.length === 0) && (
+                        {(!project?.users || project.users.length === 0) && (
                             <div className="text-slate-400 text-center py-8">
                                 <div className="text-sm">No collaborators yet</div>
                             </div>
                         )}
-                        {project.users && project.users.map((u, idx) => {
+                        {project?.users && project.users.map((u, idx) => {
                             const userObj = typeof u === 'object' && u.email ? u : users.find(usr => usr._id === (u._id || u));
                             if (!userObj) return null;
                             return (
