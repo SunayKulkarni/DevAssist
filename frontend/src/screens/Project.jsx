@@ -525,16 +525,16 @@ const Project = () => {
         // Initialize container immediately
         initializeContainer();
 
-        // Set up socket listeners
-        recieveMessage('chat-history', (history) => {
+        // Create callback functions with proper closure
+        const handleChatHistory = (history) => {
             console.log('Received chat history:', history);
             setMessages(history.map(msg => ({
                 ...msg,
                 type: msg.sender?.email === user?.email ? 'outgoing' : 'incoming'
             })));
-        });
+        };
 
-        recieveMessage('project-message', async data => {
+        const handleProjectMessage = async (data) => {
             console.log('Received project-message:', data);
             try {
                 // Handle both old format (data.message as string) and new format (data as full object)
@@ -598,20 +598,24 @@ const Project = () => {
                         type: 'incoming',
                         sender: data.sender || { email: 'AI', type: 'ai' }
                     }];
-                    console.log('Updated messages:', updated);
+                    console.log('Updated messages:', updated.length, 'messages');
                     return updated;
                 });
             } catch (error) {
                 console.error('Error processing message:', error);
             }
-        });
+        };
 
-        // Cleanup function
+        // Set up socket listeners
+        recieveMessage('chat-history', handleChatHistory);
+        recieveMessage('project-message', handleProjectMessage);
+
+        // Cleanup function - remove listeners when project changes
         return () => {
             console.log('Cleaning up socket listeners for project:', project._id);
-            // Socket listeners will be re-registered on next mount
+            // Listeners will be re-registered on next render with new project
         };
-    }, [project, user?.email]);
+    }, [project?._id, user?.email]);
 
 
     useEffect(() => {
