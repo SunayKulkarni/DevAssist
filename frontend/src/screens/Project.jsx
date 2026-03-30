@@ -18,6 +18,7 @@ const Project = () => {
     const [selectedUserId, setSelectedUserId] = useState(new Set()) // <-- Store selected user ID
     const [users, setUsers] = useState([]) // <-- Store users data
     const [project, setProject] = useState(location.state?.project || {})
+    const projectId = project?._id || location.state?.project?._id || null
     const [message, setMessage] = useState('') // <-- Store messages data
     const [messages, setMessages] = useState([]) // <-- NEW STATE for messages
     const [aidatacopiedStatus, setaidataCopiedStatus] = useState(false);  // <-- NEW STATE for ai response copied status
@@ -107,8 +108,9 @@ const Project = () => {
     }
 
     function addCollaborators() {
+        if (!projectId) return;
         axios.put(`/projects/add-user`, {
-            projectId: location.state.project._id,
+            projectId,
             users: Array.from(selectedUserId)
         })
             .then(response => {
@@ -385,7 +387,11 @@ const Project = () => {
     }, []);
 
     useEffect(() => {
-        initializeSocket(project._id) // Initialize socket connection
+        if (!projectId) {
+            return;
+        }
+
+        initializeSocket(projectId) // Initialize socket connection
 
         const initializeContainer = async () => {
             try {
@@ -467,7 +473,7 @@ const Project = () => {
             }
         });
 
-        axios.get(`/projects/get-project/${location.state.project._id}`)
+        axios.get(`/projects/get-project/${projectId}`)
             .then(response => {
                 console.log(response.data.project)
                 setProject(response.data.project)
@@ -487,7 +493,21 @@ const Project = () => {
                 currentWebContainer = null;
             }
         };
-    }, []);
+    }, [projectId, user?.email]);
+
+    if (!projectId) {
+        return (
+            <main className="h-screen min-h-screen w-screen flex items-center justify-center bg-slate-950 text-slate-100 p-6">
+                <div className="text-center max-w-md">
+                    <h1 className="text-xl font-semibold mb-2">Project not found</h1>
+                    <p className="text-slate-400 mb-6">Please open a project from the home page.</p>
+                    <Link to="/" className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition">
+                        Go to Home
+                    </Link>
+                </div>
+            </main>
+        );
+    }
 
 
     useEffect(() => {
