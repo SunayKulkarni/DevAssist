@@ -30,6 +30,7 @@ const Project = () => {
     const [currentFile, setCurrentFile] = useState(null)
     const [openFiles, setOpenFiles] = useState([])
     const [webContainer, setWebContainer] = useState(null)
+    const [pageError, setPageError] = useState('')
 
     // Add new state for file operations
     const [isFileMenuOpen, setIsFileMenuOpen] = useState(false);
@@ -392,7 +393,13 @@ const Project = () => {
             return;
         }
 
-        initializeSocket(projectId) // Initialize socket connection
+        try {
+            initializeSocket(projectId) // Initialize socket connection
+        } catch (error) {
+            console.error('Socket initialization failed:', error);
+            setPageError('Failed to initialize project connection.');
+            return;
+        }
 
         const initializeContainer = async () => {
             try {
@@ -414,10 +421,14 @@ const Project = () => {
         initializeContainer();
 
         recieveMessage('chat-history', (history) => {
-            setMessages(history.map(msg => ({
-                ...msg,
-                type: msg.sender?.email === user?.email ? 'outgoing' : 'incoming'
-            })));
+            try {
+                setMessages((history || []).map(msg => ({
+                    ...msg,
+                    type: msg.sender?.email === user?.email ? 'outgoing' : 'incoming'
+                })));
+            } catch (error) {
+                console.error('Failed to process chat history:', error);
+            }
         });
 
         let currentWebContainer = null;
@@ -889,6 +900,20 @@ const Project = () => {
                 <div className="text-center max-w-md">
                     <h1 className="text-xl font-semibold mb-2">Project not found</h1>
                     <p className="text-slate-400 mb-6">Please open a project from the home page.</p>
+                    <Link to="/" className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition">
+                        Go to Home
+                    </Link>
+                </div>
+            </main>
+        );
+    }
+
+    if (pageError) {
+        return (
+            <main className="h-screen min-h-screen w-screen flex items-center justify-center bg-slate-950 text-slate-100 p-6">
+                <div className="text-center max-w-md">
+                    <h1 className="text-xl font-semibold mb-2">Unable to open project</h1>
+                    <p className="text-slate-400 mb-6">{pageError}</p>
                     <Link to="/" className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition">
                         Go to Home
                     </Link>
