@@ -146,6 +146,35 @@ const Project = () => {
         return root;
     };
 
+    // Deep merge function for file trees
+    const deepMergeFileTree = (target, source) => {
+        const result = { ...target };
+
+        for (const [key, sourceNode] of Object.entries(source)) {
+            if (!result[key]) {
+                result[key] = sourceNode;
+            } else {
+                // Both exist - need to merge
+                const targetNode = result[key];
+                
+                if (sourceNode.file && targetNode.file) {
+                    // Both are files - take source
+                    result[key] = sourceNode;
+                } else if (sourceNode.directory && targetNode.directory) {
+                    // Both are directories - recursively merge
+                    result[key] = {
+                        directory: deepMergeFileTree(targetNode.directory, sourceNode.directory)
+                    };
+                } else {
+                    // Type mismatch - take source
+                    result[key] = sourceNode;
+                }
+            }
+        }
+
+        return result;
+    };
+
     const handleUserClick = (id) => {
         setSelectedUserId(prevSelectedUserId => {
             const newSelectedUserId = new Set(prevSelectedUserId)
@@ -544,8 +573,8 @@ const Project = () => {
                         try {
                             await currentWebContainer.mount(normalizedTree);
                             setFileTree(prev => {
-                                // Merge the new files with existing file tree
-                                return { ...prev, ...normalizedTree };
+                                // Use deep merge to properly handle nested structures
+                                return deepMergeFileTree(prev, normalizedTree);
                             });
                             console.log('Files mounted successfully:', normalizedTree);
                         } catch (mountError) {
