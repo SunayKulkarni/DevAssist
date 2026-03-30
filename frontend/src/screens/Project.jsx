@@ -60,9 +60,7 @@ const Project = () => {
     const [activeTab, setActiveTab] = useState('preview') // 'preview' | 'output'
 
     // Add state for output modal
-    const [isOutputModalOpen, setIsOutputModalOpen] = useState(false);
-    // Feedback states for output modal buttons
-    const [reloadedStatus, setReloadedStatus] = useState(false);
+    const [isChatVisible, setIsChatVisible] = useState(true); // Toggle chat on mobile
 
     const getLanguageFromFilename = (filename = '') => {
         const ext = filename.split('.').pop()?.toLowerCase();
@@ -880,11 +878,14 @@ const Project = () => {
     };
 
     return (
-        <main className="h-screen min-h-screen w-screen flex bg-slate-950 text-slate-100 overflow-hidden">
-            {/* Left Panel: Chat & Collaborators */}
+        <main className="h-screen min-h-screen w-screen flex flex-col lg:flex-row bg-slate-950 text-slate-100 overflow-hidden">
+            {/* Left Panel: Chat & Collaborators - Hidden on mobile by default */}
             <section 
-                style={{ width: chatWidth, transition: isChatResizing ? 'none' : 'width 0.2s' }}
-                className="left relative flex flex-col h-full bg-slate-900 shadow-2xl border-r border-slate-800 backdrop-blur-sm min-w-[280px] max-w-[600px]">
+                style={{ 
+                    width: isChatVisible ? chatWidth : 0,
+                    transition: isChatResizing ? 'none' : 'width 0.2s' 
+                }}
+                className="left relative flex-col h-1/3 lg:h-full bg-slate-900 shadow-2xl border-r border-slate-800 backdrop-blur-sm min-w-[280px] max-w-[600px] overflow-hidden hidden lg:flex">
                 {/* Resizer for chat panel */}
                 <div
                     ref={chatResizerRef}
@@ -893,16 +894,16 @@ const Project = () => {
                     className="bg-slate-700/20 hover:bg-blue-600/50 transition-colors"
                 />
                 {/* Header Box */}
-                <header className="flex flex-col items-start p-5 w-full gap-4 bg-slate-800/50 border-b border-slate-700">
-                    <div className="flex justify-between items-center w-full">
-                        <div>
-                            <h1 className="text-xl font-bold text-slate-100">{project?.name}</h1>
-                            <p className="text-sm text-slate-400 mt-1">
+                <header className="flex flex-col items-start p-3 sm:p-5 w-full gap-3 sm:gap-4 bg-slate-800/50 border-b border-slate-700">
+                    <div className="flex justify-between items-start sm:items-center w-full gap-3">
+                        <div className="min-w-0">
+                            <h1 className="text-lg sm:text-xl font-bold text-slate-100 truncate">{project?.name}</h1>
+                            <p className="text-xs sm:text-sm text-slate-400 mt-1 truncate">
                                 <i className="ri-user-line text-xs mr-1"></i>
                                 {user?.email}
                             </p>
                         </div>
-                        <Link to="/" className="p-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition text-slate-300 hover:text-blue-400">
+                        <Link to="/" className="p-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition text-slate-300 hover:text-blue-400 flex-shrink-0">
                             <i className="ri-home-4-line text-lg"></i>
                         </Link>
                     </div>
@@ -911,19 +912,19 @@ const Project = () => {
                         {/* Add Collaborator Button */}
                         <button
                             onClick={() => setIsModalOpen(true)}
-                            className="flex-1 flex gap-2 items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm transition duration-200 text-sm font-medium"
+                            className="flex-1 flex gap-2 items-center justify-center px-2 sm:px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm transition duration-200 text-xs sm:text-sm font-medium"
                         >
                             <i className="ri-user-add-line"></i>
-                            <span>Add</span>
+                            <span className="hidden sm:inline">Add</span>
                         </button>
 
                         {/* Show Collaborators Button */}
                         <button
                             onClick={() => setIsSidePanelOpen(!isSidePanelOpen)}
-                            className="flex-1 flex gap-2 items-center justify-center px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg shadow-sm transition duration-200 text-sm font-medium"
+                            className="flex-1 flex gap-2 items-center justify-center px-2 sm:px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg shadow-sm transition duration-200 text-xs sm:text-sm font-medium"
                         >
                             <i className="ri-group-line"></i>
-                            <span>Collaborators</span>
+                            <span className="hidden sm:inline">Collaborators</span>
                         </button>
                     </div>
 
@@ -939,7 +940,7 @@ const Project = () => {
                         {/* Scrollable messages */}
                         <div
                             ref={messageBox}
-                            className="flex-grow flex flex-col gap-7 px-4 py-4 overflow-y-auto w-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                            className="flex-grow flex flex-col gap-3 sm:gap-7 px-2 sm:px-4 py-2 sm:py-4 overflow-y-auto w-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                             style={{ minHeight: '0' }}
                         >
                             {messages.map((msg, index) => {
@@ -949,17 +950,17 @@ const Project = () => {
                                 return (
                                     <div
                                         key={index}
-                                        className={`flex flex-col ${isOutgoing ? 'items-end' : 'items-start'} group mb-4`}
+                                        className={`flex flex-col ${isOutgoing ? 'items-end' : 'items-start'} group mb-2 sm:mb-4`}
                                     >
                                         <span className="text-xs text-slate-400 mb-1 ml-2 mr-2">
                                             {isAI ? 'AI Assistant' : msg.sender?.email}
                                         </span>
                                         <div
                                             className={`
-                                                max-w-xs md:max-w-md
+                                                max-w-xs
                                                 ${isAI
                                                     ? 'w-full'
-                                                    : `px-5 py-3 rounded-2xl shadow-lg text-base font-medium whitespace-pre-wrap break-words
+                                                    : `px-3 sm:px-5 py-2 sm:py-3 rounded-2xl shadow-lg text-sm sm:text-base font-medium whitespace-pre-wrap break-words
                                                        transition-all duration-200
                                                        ${isOutgoing
                                                         ? 'bg-slate-700 text-blue-100 border border-slate-600 rounded-br-3xl rounded-tr-2xl'
@@ -979,18 +980,18 @@ const Project = () => {
                             })}
                         </div>
                         {/* Fixed input at the bottom */}
-                        <div className="w-full flex justify-center pt-2 pb-2 bg-slate-900 border-t border-slate-700">
-                            <div className="flex w-full max-w-[400px] gap-2">
+                        <div className="w-full flex justify-center pt-1 sm:pt-2 pb-1 sm:pb-2 bg-slate-900 border-t border-slate-700">
+                            <div className="flex w-full max-w-[400px] gap-1 sm:gap-2 px-2">
                                 <input
                                     value={message}
                                     onChange={(e) => setMessage(e.target.value)}
                                     onKeyDown={(e) => { if (e.key === 'Enter') send() }}
-                                    className="flex-grow px-4 py-3 rounded-l-xl border border-slate-700 outline-none focus:ring-2 focus:ring-blue-400 bg-slate-800 text-blue-100 shadow focus:bg-slate-900 transition"
-                                    type="text" placeholder="To ask ai Start your message with @ai"
+                                    className="flex-grow px-2 sm:px-4 py-2 sm:py-3 rounded-l-xl border border-slate-700 outline-none focus:ring-2 focus:ring-blue-400 bg-slate-800 text-blue-100 shadow focus:bg-slate-900 transition text-sm"
+                                    type="text" placeholder="Ask AI..."
                                 />
                                 <button
                                     onClick={send}
-                                    className="px-7 bg-blue-500 hover:bg-blue-600 text-white rounded-r-xl shadow transition"
+                                    className="px-3 sm:px-7 bg-blue-500 hover:bg-blue-600 text-white rounded-r-xl shadow transition"
                                 >
                                     <i className="ri-send-plane-fill"></i>
                                 </button>
@@ -1031,11 +1032,11 @@ const Project = () => {
                 </div>
                 {/* Collaborator Modal */}
                 {isModalOpen && (
-                    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
-                        <div className="bg-slate-800 rounded-xl shadow-2xl p-6 w-full max-w-md border border-slate-700">
-                            <div className="flex justify-between items-center mb-5">
-                                <h2 className="text-lg font-bold text-slate-100">Add Team Members</h2>
-                                <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-200 transition p-1 hover:bg-slate-700 rounded-lg">
+                    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm p-4">
+                        <div className="bg-slate-800 rounded-xl shadow-2xl p-4 sm:p-6 w-full max-w-md border border-slate-700 max-h-[80vh] overflow-y-auto">
+                            <div className="flex justify-between items-center mb-3 sm:mb-5">
+                                <h2 className="text-base sm:text-lg font-bold text-slate-100">Add Team Members</h2>
+                                <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-200 transition p-1 hover:bg-slate-700 rounded-lg flex-shrink-0">
                                     <i className="ri-close-line text-xl"></i>
                                 </button>
                             </div>
@@ -1047,24 +1048,24 @@ const Project = () => {
                                     <button
                                         key={u._id}
                                         onClick={() => handleUserClick(u._id)}
-                                        className={`flex items-center gap-3 p-3 rounded-lg border-2 transition ${selectedUserId.has(u._id) ? 'bg-blue-900/40 border-blue-500 text-slate-100' : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'}`}
+                                        className={`flex items-center gap-3 p-2 sm:p-3 rounded-lg border-2 transition text-sm ${selectedUserId.has(u._id) ? 'bg-blue-900/40 border-blue-500 text-slate-100' : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'}`}
                                     >
-                                        <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-slate-100 font-semibold text-sm flex-shrink-0">
+                                        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-700 flex items-center justify-center text-slate-100 font-semibold text-sm flex-shrink-0">
                                             {u.email[0].toUpperCase()}
                                         </div>
-                                        <span className="flex-grow text-left text-sm">{u.email}</span>
-                                        {selectedUserId.has(u._id) && <i className="ri-check-line text-blue-400 text-lg"></i>}
+                                        <span className="flex-grow text-left truncate text-xs sm:text-sm">{u.email}</span>
+                                        {selectedUserId.has(u._id) && <i className="ri-check-line text-blue-400 text-lg flex-shrink-0"></i>}
                                     </button>
                                 ))}
                             </div>
-                            <div className="flex justify-end gap-3">
+                            <div className="flex justify-end gap-2 sm:gap-3">
                                 <button
                                     onClick={() => setIsModalOpen(false)}
-                                    className="px-4 py-2 text-slate-300 hover:text-slate-100 hover:bg-slate-700 rounded-lg transition text-sm font-medium"
+                                    className="px-3 sm:px-4 py-1.5 sm:py-2 text-slate-300 hover:text-slate-100 hover:bg-slate-700 rounded-lg transition text-xs sm:text-sm font-medium"
                                 >Cancel</button>
                                 <button
                                     onClick={addCollaborators}
-                                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="px-4 sm:px-5 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow transition text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                                     disabled={selectedUserId.size === 0}
                                 >Add</button>
                             </div>
@@ -1073,9 +1074,9 @@ const Project = () => {
                 )}
             </section>
             {/* File Explorer & Code Editor */}
-            <section className="flex flex-grow h-full gap-0 min-w-0">
-                {/* File Explorer */}
-                <div className="explorer h-full w-72 bg-slate-800 border-r border-slate-700 shadow-lg flex flex-col">
+            <section className="flex flex-col lg:flex-row flex-grow h-2/3 lg:h-full gap-0 min-w-0">
+                {/* File Explorer - Hidden on mobile, visible on larger screens */}
+                <div className="explorer hidden md:flex h-full w-72 bg-slate-800 border-r border-slate-700 shadow-lg flex-col">
                     {/* File Explorer Header */}
                     <div className="flex items-center justify-between px-4 py-3 bg-slate-800 border-b border-slate-700">
                         <div className="flex items-center gap-2">
@@ -1117,6 +1118,65 @@ const Project = () => {
                 {/* Code Editor */}
                 <div ref={resizerRef} style={{ width: editorWidth, minWidth: 300, maxWidth: 900, transition: isResizing ? 'none' : 'width 0.2s' }}
                     className="code-editor flex flex-col flex-grow h-full bg-slate-950 relative">
+                    {/* Mobile File Explorer Toggle */}
+                    <button
+                        onClick={() => setIsChatVisible(!isChatVisible)}
+                        className="md:hidden absolute top-4 left-4 z-10 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded transition-colors flex items-center gap-2"
+                        title="Toggle file explorer"
+                    >
+                        <i className="ri-menu-line"></i>
+                        <span>Files</span>
+                    </button>
+
+                    {/* Mobile File Explorer Overlay */}
+                    {isChatVisible && (
+                        <div className="md:hidden absolute inset-0 z-20 bg-black/40 backdrop-blur-sm" onClick={() => setIsChatVisible(false)} />
+                    )}
+                    <div className={`md:hidden absolute left-0 top-0 bottom-0 w-64 bg-slate-800 border-r border-slate-700 shadow-lg flex flex-col z-30 transition-transform transform ${
+                        isChatVisible ? 'translate-x-0' : '-translate-x-full'
+                    }`}>
+                        {/* File Explorer Header */}
+                        <div className="flex items-center justify-between px-4 py-3 bg-slate-800 border-b border-slate-700">
+                            <div className="flex items-center gap-2">
+                                <RiFolder3Line className="text-blue-400 text-lg" />
+                                <span className="text-sm font-semibold text-slate-100">Files</span>
+                            </div>
+                            <button onClick={() => setIsChatVisible(false)} className="p-1 hover:bg-slate-700 rounded">
+                                <i className="ri-close-line text-slate-300"></i>
+                            </button>
+                        </div>
+                        {/* File Tree */}
+                        <div className="flex-grow overflow-y-auto p-2 space-y-0.5">
+                            {!fileTree || Object.keys(fileTree).length === 0 ? (
+                                <div className="text-slate-400 text-center py-8 text-sm">No files</div>
+                            ) : (
+                                renderFileTree(fileTree)
+                            )}
+                        </div>
+                        {/* Mobile Action Buttons */}
+                        <div className="flex gap-2 p-3 bg-slate-900 border-t border-slate-700">
+                            <button
+                                onClick={() => {
+                                    setIsCreatingFile(true);
+                                    setIsChatVisible(false);
+                                }}
+                                className="flex-1 flex items-center justify-center gap-1 px-2 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition"
+                            >
+                                <i className="ri-file-add-line" />
+                                <span>File</span>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setIsCreatingFolder(true);
+                                    setIsChatVisible(false);
+                                }}
+                                className="flex-1 flex items-center justify-center gap-1 px-2 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-sm transition"
+                            >
+                                <i className="ri-folder-add-line" />
+                                <span>Folder</span>
+                            </button>
+                        </div>
+                    </div>
                     {/* Resizer */}
                     <div
                         style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 4, cursor: 'ew-resize', zIndex: 10 }}
@@ -1130,7 +1190,7 @@ const Project = () => {
                             {openFiles.map((file) => (
                                 <div
                                     key={file}
-                                    className={`group flex items-center gap-2 px-4 py-2.5 border-r border-slate-700 min-w-[120px] max-w-[200px] text-sm
+                                    className={`group flex items-center gap-2 px-2 sm:px-4 py-2.5 border-r border-slate-700 min-w-[80px] sm:min-w-[120px] max-w-[160px] sm:max-w-[200px] text-xs sm:text-sm
                                         ${currentFile === file
                                             ? 'bg-slate-800 text-slate-100 border-b-2 border-b-blue-500'
                                             : 'bg-slate-900/50 text-slate-400 hover:text-slate-300'
@@ -1141,7 +1201,7 @@ const Project = () => {
                                         className="flex items-center gap-2 focus:outline-none flex-grow min-w-0"
                                     >
                                         <i className="ri-file-3-line flex-shrink-0"></i>
-                                        <span className="truncate">{file.split('/').pop()}</span>
+                                        <span className="truncate text-xs sm:text-sm">{file.split('/').pop()}</span>
                                     </button>
                                     <button
                                         onClick={() => handleCloseFile(file)}
@@ -1153,11 +1213,11 @@ const Project = () => {
                             ))}
                         </div>
 
-                        <div className="actions flex gap-1 px-2 py-1">
+                        <div className="actions flex gap-1 px-1 sm:px-2 py-1 flex-shrink-0">
                             <button
                                 onClick={handleRunServer}
                                 className={
-                                    `relative flex items-center gap-2 px-3 py-2 rounded transition-all duration-200 text-sm font-medium
+                                    `relative hidden sm:flex items-center gap-2 px-3 py-2 rounded transition-all duration-200 text-sm font-medium
                                     ${containerStatus === 'running'
                                         ? 'bg-green-600 hover:bg-green-700 text-white'
                                         : containerStatus === 'error'
@@ -1167,6 +1227,7 @@ const Project = () => {
                                     disabled:opacity-50 disabled:cursor-not-allowed`
                                 }
                                 disabled={containerStatus === 'installing' || containerStatus === 'starting'}
+                                title="Run"
                             >
                                 {containerStatus === 'installing' || containerStatus === 'starting' ? (
                                     <>
@@ -1190,24 +1251,66 @@ const Project = () => {
                                     </>
                                 )}
                             </button>
+                            {/* Mobile Run Button (Icon only) */}
+                            <button
+                                onClick={handleRunServer}
+                                className={
+                                    `relative sm:hidden flex items-center justify-center p-2 rounded transition-all duration-200 text-sm font-medium
+                                    ${containerStatus === 'running'
+                                        ? 'bg-green-600 hover:bg-green-700 text-white'
+                                        : containerStatus === 'error'
+                                            ? 'bg-red-600 hover:bg-red-700 text-white'
+                                            : 'bg-blue-600 hover:bg-blue-700 text-white'}
+                                    shadow hover:shadow-lg
+                                    disabled:opacity-50 disabled:cursor-not-allowed`
+                                }
+                                disabled={containerStatus === 'installing' || containerStatus === 'starting'}
+                                title="Run"
+                            >
+                                {containerStatus === 'installing' || containerStatus === 'starting' ? (
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    <i className="ri-play-line" />
+                                )}
+                            </button>
                             {/* Output Button */}
                             {containerStatus === 'running' && iframeUrl && (
                                 <button
                                     onClick={() => setIsOutputModalOpen(true)}
-                                    className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition text-sm font-medium"
+                                    className="hidden sm:flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition text-sm font-medium"
                                 >
                                     <i className="ri-window-line" />
                                     <span>View</span>
+                                </button>
+                            )}
+                            {/* Mobile Output Button (Icon only) */}
+                            {containerStatus === 'running' && iframeUrl && (
+                                <button
+                                    onClick={() => setIsOutputModalOpen(true)}
+                                    className="sm:hidden p-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition"
+                                    title="View output"
+                                >
+                                    <i className="ri-window-line" />
                                 </button>
                             )}
                             {/* Close Server Button */}
                             {(containerStatus === 'running' || containerStatus === 'error') && (
                                 <button
                                     onClick={handleCloseServer}
-                                    className="flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition text-sm font-medium"
+                                    className="hidden sm:flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition text-sm font-medium"
                                 >
                                     <i className="ri-stop-line" />
                                     <span>Stop</span>
+                                </button>
+                            )}
+                            {/* Mobile Stop Button (Icon only) */}
+                            {(containerStatus === 'running' || containerStatus === 'error') && (
+                                <button
+                                    onClick={handleCloseServer}
+                                    className="sm:hidden p-2 bg-red-600 hover:bg-red-700 text-white rounded transition"
+                                    title="Stop"
+                                >
+                                    <i className="ri-stop-line" />
                                 </button>
                             )}
                         </div>
@@ -1454,24 +1557,24 @@ const Project = () => {
 
             {/* File Creation Modal */}
             {isCreatingFile && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-                    <div className="bg-slate-800 rounded-2xl shadow-2xl p-8 w-full max-w-md border border-slate-700">
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+                    <div className="bg-slate-800 rounded-2xl shadow-2xl p-6 w-full max-w-md border border-slate-700">
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-bold text-blue-300">Create New File</h2>
+                            <h2 className="text-lg sm:text-xl font-bold text-blue-300">Create New File</h2>
                             <button
                                 onClick={() => {
                                     setIsCreatingFile(false);
                                     setNewFileName('');
                                     setSelectedFolderPath('');
                                 }}
-                                className="text-slate-400 hover:text-slate-200 transition p-2 hover:bg-slate-700 rounded-lg"
+                                className="text-slate-400 hover:text-slate-200 transition p-2 hover:bg-slate-700 rounded-lg flex-shrink-0"
                             >
                                 <i className="ri-close-line text-2xl"></i>
                             </button>
                         </div>
                         {selectedFolderPath && (
                             <div className="mb-4 p-3 bg-slate-700/50 rounded-lg border border-slate-600">
-                                <p className="text-sm text-slate-300">
+                                <p className="text-xs sm:text-sm text-slate-300 break-words">
                                     <span className="text-slate-400">Creating file in:</span> {selectedFolderPath}
                                 </p>
                             </div>
@@ -1493,7 +1596,7 @@ const Project = () => {
                                         setSelectedFolderPath('');
                                     }
                                 }}
-                                className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                                 placeholder="Enter file name (e.g., app.js)"
                                 autoFocus
                             />
@@ -1508,16 +1611,16 @@ const Project = () => {
                                     setNewFileName('');
                                     setSelectedFolderPath('');
                                 }}
-                                className="px-4 py-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700 rounded-lg transition"
+                                className="px-4 py-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700 rounded-lg transition text-sm"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleCreateFile}
-                                className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow transition"
+                                className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow transition text-sm disabled:opacity-50"
                                 disabled={!newFileName.trim()}
                             >
-                                Create File
+                                Create
                             </button>
                         </div>
                     </div>
@@ -1526,24 +1629,24 @@ const Project = () => {
 
             {/* Folder Creation Modal */}
             {isCreatingFolder && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-                    <div className="bg-slate-800 rounded-2xl shadow-2xl p-8 w-full max-w-md border border-slate-700">
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+                    <div className="bg-slate-800 rounded-2xl shadow-2xl p-6 w-full max-w-md border border-slate-700">
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-bold text-green-300">Create New Folder</h2>
+                            <h2 className="text-lg sm:text-xl font-bold text-green-300">Create New Folder</h2>
                             <button
                                 onClick={() => {
                                     setIsCreatingFolder(false);
                                     setNewFolderName('');
                                     setSelectedFolderPath('');
                                 }}
-                                className="text-slate-400 hover:text-slate-200 transition p-2 hover:bg-slate-700 rounded-lg"
+                                className="text-slate-400 hover:text-slate-200 transition p-2 hover:bg-slate-700 rounded-lg flex-shrink-0"
                             >
                                 <i className="ri-close-line text-2xl"></i>
                             </button>
                         </div>
                         {selectedFolderPath && (
                             <div className="mb-4 p-3 bg-slate-700/50 rounded-lg border border-slate-600">
-                                <p className="text-sm text-slate-300">
+                                <p className="text-xs sm:text-sm text-slate-300 break-words">
                                     <span className="text-slate-400">Creating folder in:</span> {selectedFolderPath}
                                 </p>
                             </div>
@@ -1565,7 +1668,7 @@ const Project = () => {
                                         setSelectedFolderPath('');
                                     }
                                 }}
-                                className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
                                 placeholder="Enter folder name"
                                 autoFocus
                             />
@@ -1580,16 +1683,16 @@ const Project = () => {
                                     setNewFolderName('');
                                     setSelectedFolderPath('');
                                 }}
-                                className="px-4 py-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700 rounded-lg transition"
+                                className="px-4 py-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700 rounded-lg transition text-sm"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleCreateFolder}
-                                className="px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg shadow transition"
+                                className="px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg shadow transition text-sm disabled:opacity-50"
                                 disabled={!newFolderName.trim()}
                             >
-                                Create Folder
+                                Create
                             </button>
                         </div>
                     </div>
@@ -1598,14 +1701,14 @@ const Project = () => {
 
             {/* Output Preview Modal */}
             {isOutputModalOpen && iframeUrl && webContainer && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4">
                     <div className="relative w-full max-w-4xl h-[80vh] bg-slate-900 rounded-2xl shadow-2xl border border-slate-700 flex flex-col">
                         {/* Modal Header */}
-                        <div className="flex items-center justify-between px-6 py-3 bg-slate-800 border-b border-slate-700 rounded-t-2xl">
-                            <span className="text-blue-300 font-semibold text-base flex items-center gap-2">
+                        <div className="flex items-center justify-between px-4 sm:px-6 py-3 bg-slate-800 border-b border-slate-700 rounded-t-2xl">
+                            <span className="text-blue-300 font-semibold text-sm sm:text-base flex items-center gap-2">
                                 <i className="ri-window-line text-lg" /> Output Preview
                             </span>
-                            <div className="flex gap-2 items-center">
+                            <div className="flex gap-1 sm:gap-2 items-center">
                                 <div className="relative">
                                     <button
                                         onClick={() => {
@@ -1619,7 +1722,7 @@ const Project = () => {
                                         <i className="ri-refresh-line text-blue-300"></i>
                                     </button>
                                     {reloadedStatus && (
-                                        <span className="absolute left-1/2 -translate-x-1/2 top-10 text-xs bg-slate-800 text-green-400 px-2 py-1 rounded shadow border border-green-500 z-10">Reloaded!</span>
+                                        <span className="absolute left-1/2 -translate-x-1/2 top-10 text-xs bg-slate-800 text-green-400 px-2 py-1 rounded shadow border border-green-500 z-10 whitespace-nowrap">Reloaded!</span>
                                     )}
                                 </div>
                                 <div className="relative">
@@ -1635,7 +1738,7 @@ const Project = () => {
                                         <i className="ri-clipboard-line text-blue-300"></i>
                                     </button>
                                     {opcopiedStatus && (
-                                        <span className="absolute left-1/2 -translate-x-1/2 top-10 text-xs bg-slate-800 text-blue-400 px-2 py-1 rounded shadow border border-blue-500 z-10">Copied!</span>
+                                        <span className="absolute left-1/2 -translate-x-1/2 top-10 text-xs bg-slate-800 text-blue-400 px-2 py-1 rounded shadow border border-blue-500 z-10 whitespace-nowrap">Copied!</span>
                                     )}
                                 </div>
                                 <a
@@ -1649,7 +1752,7 @@ const Project = () => {
                                 </a>
                                 <button
                                     onClick={() => setIsOutputModalOpen(false)}
-                                    className="p-1.5 bg-red-700 hover:bg-red-800 rounded transition ml-2"
+                                    className="p-1.5 bg-red-700 hover:bg-red-800 rounded transition ml-1 sm:ml-2"
                                     title="Close Preview"
                                 >
                                     <i className="ri-close-line text-white text-lg"></i>
@@ -1657,11 +1760,11 @@ const Project = () => {
                             </div>
                         </div>
                         {/* Address Bar */}
-                        <div className="address-bar flex items-center gap-2 px-6 py-2 bg-slate-700 border-b border-slate-800">
+                        <div className="address-bar flex items-center gap-2 px-4 sm:px-6 py-2 bg-slate-700 border-b border-slate-800">
                             <input
                                 type="text"
                                 value={iframeUrl}
-                                className="w-full p-2 px-4 bg-slate-600 text-slate-200 rounded focus:outline-none text-xs font-mono"
+                                className="w-full p-1.5 sm:p-2 px-3 sm:px-4 bg-slate-600 text-slate-200 rounded focus:outline-none text-xs font-mono"
                                 readOnly
                             />
                         </div>
