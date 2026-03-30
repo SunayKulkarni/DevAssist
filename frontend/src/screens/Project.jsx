@@ -13,6 +13,21 @@ import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 const Project = () => {
     const location = useLocation()
 
+    // Safety check for location.state
+    if (!location.state || !location.state.project) {
+        return (
+            <div className="h-screen w-screen flex items-center justify-center bg-slate-950 text-slate-100">
+                <div className="text-center">
+                    <p className="text-xl font-bold mb-4">Error: Project not found</p>
+                    <p className="text-slate-400 mb-6">Please select a project from the home page</p>
+                    <Link to="/" className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition">
+                        Go Back Home
+                    </Link>
+                </div>
+            </div>
+        );
+    }
+
     const [isSidePanelOpen, setIsSidePanelOpen] = useState(false)
     const [isModalOpen, setIsModalOpen] = useState(false) // <-- Added state for modal
     const [selectedUserId, setSelectedUserId] = useState(new Set()) // <-- Store selected user ID
