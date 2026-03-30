@@ -104,6 +104,48 @@ const Project = () => {
         return languageMap[ext] || 'javascript';
     };
 
+    // Helper function to normalize fileTree from AI
+    // Handles both flat structures (with path keys) and nested structures
+    const normalizeFileTree = (flatOrNestedTree) => {
+        if (!flatOrNestedTree || typeof flatOrNestedTree !== 'object') {
+            return {};
+        }
+
+        // Check if tree uses path notation (e.g., "backend/server.js")
+        const hasPathNotation = Object.keys(flatOrNestedTree).some(key => key.includes('/'));
+
+        if (!hasPathNotation) {
+            // Already nested structure
+            return flatOrNestedTree;
+        }
+
+        // Flatten and then unflatten to create proper nested structure
+        const root = {};
+
+        for (const [path, node] of Object.entries(flatOrNestedTree)) {
+            const parts = path.split('/');
+            let current = root;
+
+            // Create nested structure for directories
+            for (let i = 0; i < parts.length - 1; i++) {
+                const part = parts[i];
+                if (!current[part]) {
+                    current[part] = { directory: {} };
+                }
+                if (!current[part].directory) {
+                    current[part].directory = {};
+                }
+                current = current[part].directory;
+            }
+
+            // Add the file at the correct location
+            const fileName = parts[parts.length - 1];
+            current[fileName] = node;
+        }
+
+        return root;
+    };
+
     const handleUserClick = (id) => {
         setSelectedUserId(prevSelectedUserId => {
             const newSelectedUserId = new Set(prevSelectedUserId)
@@ -485,9 +527,12 @@ const Project = () => {
                 }
 
                 if (message.fileTree) {
-                    patchExpressPortInFileTree(message.fileTree); // Patch before mounting
-                    patchPackageJsonStartScript(message.fileTree); // Patch start script
-                    patchStaticFrontendProject(message.fileTree); // Patch static frontend
+                    // Normalize the fileTree to handle both flat and nested structures
+                    const normalizedTree = normalizeFileTree(message.fileTree);
+                    
+                    patchExpressPortInFileTree(normalizedTree); // Patch before mounting
+                    patchPackageJsonStartScript(normalizedTree); // Patch start script
+                    patchStaticFrontendProject(normalizedTree); // Patch static frontend
 
                     // Get the latest webContainer instance
                     if (!currentWebContainer) {
@@ -496,8 +541,16 @@ const Project = () => {
                     }
 
                     if (currentWebContainer) {
-                        await currentWebContainer.mount(message.fileTree);
-                        setFileTree(message.fileTree);
+                        try {
+                            await currentWebContainer.mount(normalizedTree);
+                            setFileTree(prev => {
+                                // Merge the new files with existing file tree
+                                return { ...prev, ...normalizedTree };
+                            });
+                            console.log('Files mounted successfully:', normalizedTree);
+                        } catch (mountError) {
+                            console.error('Error mounting files to WebContainer:', mountError);
+                        }
                     } else {
                         console.error('WebContainer not initialized');
                     }
