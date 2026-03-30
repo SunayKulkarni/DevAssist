@@ -496,21 +496,6 @@ const Project = () => {
         };
     }, [projectId, user?.email]);
 
-    if (!projectId) {
-        return (
-            <main className="h-screen min-h-screen w-screen flex items-center justify-center bg-slate-950 text-slate-100 p-6">
-                <div className="text-center max-w-md">
-                    <h1 className="text-xl font-semibold mb-2">Project not found</h1>
-                    <p className="text-slate-400 mb-6">Please open a project from the home page.</p>
-                    <Link to="/" className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition">
-                        Go to Home
-                    </Link>
-                </div>
-            </main>
-        );
-    }
-
-
     useEffect(() => {
         if (messageBox.current) {
             messageBox.current.scrollTop = messageBox.current.scrollHeight
@@ -897,6 +882,20 @@ const Project = () => {
             setStatusMessage('Error during force stop: ' + error.message);
         }
     };
+
+    if (!projectId) {
+        return (
+            <main className="h-screen min-h-screen w-screen flex items-center justify-center bg-slate-950 text-slate-100 p-6">
+                <div className="text-center max-w-md">
+                    <h1 className="text-xl font-semibold mb-2">Project not found</h1>
+                    <p className="text-slate-400 mb-6">Please open a project from the home page.</p>
+                    <Link to="/" className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition">
+                        Go to Home
+                    </Link>
+                </div>
+            </main>
+        );
+    }
 
     return (
         <main className="h-screen min-h-screen w-screen flex flex-col lg:flex-row bg-slate-950 text-slate-100 overflow-hidden">
