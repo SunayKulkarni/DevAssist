@@ -99,7 +99,7 @@ const Home = () => {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
-                My Projects
+                DevAssist
               </h1>
               <p className="text-slate-300 mt-2 flex items-center gap-2">
                 <i className='ri-user-3-line'></i>

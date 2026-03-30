@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react'
-import { useLocation, Link } from 'react-router-dom'
+import { useLocation, Link, useParams, Navigate } from 'react-router-dom'
 import axios from '../config/axios.js'
 import { initializeSocket, recieveMessage, sendMessage } from '../config/socket.js'
 import { UserContext } from '../context/user.context.jsx'
@@ -17,7 +17,18 @@ const Project = () => {
     const [isModalOpen, setIsModalOpen] = useState(false) // <-- Added state for modal
     const [selectedUserId, setSelectedUserId] = useState(new Set()) // <-- Store selected user ID
     const [users, setUsers] = useState([]) // <-- Store users data
-    const [project, setProject] = useState(location.state.project)
+    const [project, setProject] = useState(null);
+    const [error, setError] = useState(null);
+    const { projectId: routeProjectId } = useParams();
+    const projectId = routeProjectId || location.state?.project?._id;
+
+    // Add a state for loading
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Redirect if no project ID is available
+    if (!projectId) {
+        return <Navigate to="/" replace />;
+    }
     const [message, setMessage] = useState('') // <-- Store messages data
     const [messages, setMessages] = useState([]) // <-- NEW STATE for messages
     const [aidatacopiedStatus, setaidataCopiedStatus] = useState(false);  // <-- NEW STATE for ai response copied status
@@ -107,7 +118,7 @@ const Project = () => {
 
     function addCollaborators() {
         axios.put(`/projects/add-user`, {
-            projectId: location.state.project._id,
+            projectId: project._id,
             users: Array.from(selectedUserId)
         })
             .then(response => {
@@ -372,6 +383,7 @@ const Project = () => {
 
     // Add keyboard shortcuts
     useEffect(() => {
+        if (!project) return;
         const handleKeyPress = (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
                 e.preventDefault();
@@ -381,10 +393,46 @@ const Project = () => {
 
         window.addEventListener('keydown', handleKeyPress);
         return () => window.removeEventListener('keydown', handleKeyPress);
-    }, []);
+    }, [project]);
 
     useEffect(() => {
-        initializeSocket(project._id) // Initialize socket connection
+        if (!projectId) return;
+
+        setIsLoading(true);
+        setError(null);
+
+        // Fetch project details
+        axios.get(`/projects/get-project/${projectId}`)
+            .then(response => {
+                if (response.data && response.data.project) {
+                    setProject(response.data.project);
+                } else {
+                    setError("Project not found or invalid response.");
+                }
+            })
+            .catch(error => {
+                console.error("Failed to fetch project:", error);
+                setError(error.response?.data?.message || "Failed to fetch project details.");
+            })
+            .finally(() => {
+                setIsLoading(false);
+            });
+
+        // Fetch all users for collaborator modal
+        axios.get('/users/all')
+            .then(response => {
+                setUsers(response.data.users);
+            })
+            .catch(error => {
+                console.log("Failed to fetch users:", error);
+            });
+
+    }, [projectId]);
+
+    useEffect(() => {
+        if (!project) return; // Don't initialize socket if project is not loaded
+
+        initializeSocket(project._id); // Initialize socket connection
 
         const initializeContainer = async () => {
             try {
@@ -466,27 +514,13 @@ const Project = () => {
             }
         });
 
-        axios.get(`/projects/get-project/${location.state.project._id}`)
-            .then(response => {
-                console.log(response.data.project)
-                setProject(response.data.project)
-            })
-
-        axios.get('/users/all')
-            .then(response => {
-                setUsers(response.data.users)
-            })
-            .catch(error => {
-                console.log(error)
-            })
-
         // Cleanup function
         return () => {
             if (currentWebContainer) {
                 currentWebContainer = null;
             }
         };
-    }, []);
+    }, [project, user?.email]);
 
 
     useEffect(() => {
@@ -496,7 +530,7 @@ const Project = () => {
     }, [messages, messageBox])
 
     // Compute users not in the project
-    const projectUserIds = new Set((project.users || []).map(u => typeof u === 'object' ? u._id : u));
+    const projectUserIds = new Set((project?.users || []).map(u => typeof u === 'object' ? u._id : u));
     const usersNotInProject = users.filter(u => !projectUserIds.has(u._id));
 
     // Sync scroll between textarea and line numbers
@@ -981,10 +1015,10 @@ const Project = () => {
                         </button>
                     </header>
                     <div className="flex flex-col gap-2 p-4 overflow-y-auto">
-                        {(!project.users || project.users.length === 0) && (
+                        {(!project?.users || project.users.length === 0) && (
                             <div className="text-slate-500 text-center py-4">No collaborators found for this project.</div>
                         )}
-                        {project.users && project.users.map((u, idx) => {
+                        {project?.users && project.users.map((u, idx) => {
                             const userObj = typeof u === 'object' && u.email ? u : users.find(usr => usr._id === (u._id || u));
                             if (!userObj) return null;
                             return (
