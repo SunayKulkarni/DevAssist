@@ -1442,7 +1442,7 @@ const Project = () => {
                                     fontSize: '14px'
                                 }}
                             >
-                                {currentFile && getFileNodeByPath(fileTree, currentFile)?.contents?.split('\n').map((_, i) => (
+                                {currentFile && getFileNodeByPath(fileTree, currentFile)?.contents?.split('\n')?.map((_, i) => (
                                     <div
                                         key={i}
                                         style={{
