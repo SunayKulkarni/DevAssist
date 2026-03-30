@@ -202,9 +202,53 @@ const model = genAI.getGenerativeModel({
       return result.response.text();
     };
 
-    const generateWithOpenAICompatible = async ({ providerName, baseUrl, apiKey, modelName, prompt }) => {
+    const buildForcedJsonPrompt = (prompt) => {
+      return `${prompt}\n\nReturn ONLY a valid JSON object. Do not use markdown code fences.`;
+    };
+
+    const normalizeJsonText = (rawText) => {
+      if (!rawText || typeof rawText !== 'string') {
+        return JSON.stringify({ text: '' });
+      }
+
+      const trimmed = rawText.trim();
+
+      // 1) Direct JSON
+      try {
+        JSON.parse(trimmed);
+        return trimmed;
+      } catch {}
+
+      // 2) JSON inside ```json ... ``` fences
+      const fencedJsonMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+      if (fencedJsonMatch?.[1]) {
+        const candidate = fencedJsonMatch[1].trim();
+        try {
+          JSON.parse(candidate);
+          return candidate;
+        } catch {}
+      }
+
+      // 3) Fallback text payload
+      return JSON.stringify({ text: trimmed });
+    };
+
+    const generateWithOpenAICompatible = async ({ providerName, baseUrl, apiKey, modelName, prompt, useJsonResponseFormat = true }) => {
       if (!apiKey) {
         throw new Error(`${providerName} key is not configured.`);
+      }
+
+      const requestBody = {
+        model: modelName,
+        temperature: 0.4,
+        messages: [
+          { role: 'system', content: SHARED_SYSTEM_PROMPT },
+          { role: 'user', content: buildForcedJsonPrompt(prompt) },
+        ],
+      };
+
+      if (useJsonResponseFormat) {
+        requestBody.response_format = { type: 'json_object' };
       }
 
       const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -213,15 +257,7 @@ const model = genAI.getGenerativeModel({
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
         },
-        body: JSON.stringify({
-          model: modelName,
-          temperature: 0.4,
-          response_format: { type: 'json_object' },
-          messages: [
-            { role: 'system', content: SHARED_SYSTEM_PROMPT },
-            { role: 'user', content: prompt },
-          ],
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json().catch(() => ({}));
@@ -237,7 +273,7 @@ const model = genAI.getGenerativeModel({
         throw new Error(`${providerName} returned an empty response.`);
       }
 
-      return text;
+      return normalizeJsonText(text);
     };
 
     const generateWithAnthropic = async (prompt) => {
@@ -315,8 +351,9 @@ const model = genAI.getGenerativeModel({
         providerName: 'Groq',
         baseUrl: process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1',
         apiKey: process.env.GROQ_API_KEY,
-        modelName: process.env.GROQ_MODEL || 'mixtral-8x7b-32768',
+        modelName: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
         prompt,
+        useJsonResponseFormat: false,
       });
     };
 
