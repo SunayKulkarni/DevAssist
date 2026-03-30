@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react'
-import { useLocation, Link } from 'react-router-dom'
+import { useLocation, useParams, Link } from 'react-router-dom'
 import axios from '../config/axios.js'
 import { initializeSocket, recieveMessage, sendMessage } from '../config/socket.js'
 import { UserContext } from '../context/user.context.jsx'
@@ -12,13 +12,14 @@ import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 const Project = () => {
     const location = useLocation()
+    const { projectId: routeProjectId } = useParams()
 
     const [isSidePanelOpen, setIsSidePanelOpen] = useState(false)
     const [isModalOpen, setIsModalOpen] = useState(false) // <-- Added state for modal
     const [selectedUserId, setSelectedUserId] = useState(new Set()) // <-- Store selected user ID
     const [users, setUsers] = useState([]) // <-- Store users data
     const [project, setProject] = useState(location.state?.project || {})
-    const projectId = project?._id || location.state?.project?._id || null
+    const projectId = routeProjectId || project?._id || location.state?.project?._id || null
     const [message, setMessage] = useState('') // <-- Store messages data
     const [messages, setMessages] = useState([]) // <-- NEW STATE for messages
     const [aidatacopiedStatus, setaidataCopiedStatus] = useState(false);  // <-- NEW STATE for ai response copied status

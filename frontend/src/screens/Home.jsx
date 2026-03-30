@@ -208,7 +208,7 @@ const Home = () => {
             {filteredProjects.map((project) => (
               <div
                 key={project._id}
-                onClick={() => navigate('/project', { state: { project } })}
+                onClick={() => navigate(`/project/${project._id}`, { state: { project } })}
                 className="group bg-slate-800 rounded-xl shadow-lg hover:shadow-blue-500/10 transition-all duration-300 p-6 cursor-pointer border border-slate-700 hover:border-blue-500/30 transform hover:-translate-y-1"
               >
                 <div className="flex justify-between items-start mb-4">
@@ -236,7 +236,7 @@ const Home = () => {
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigate('/project', { state: { project } });
+                        navigate(`/project/${project._id}`, { state: { project } });
                       }}
                       className="text-blue-400 hover:text-blue-300 text-sm font-medium flex items-center gap-1"
                     >
