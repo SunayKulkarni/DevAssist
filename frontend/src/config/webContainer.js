@@ -2,21 +2,35 @@ import { WebContainer } from '@webcontainer/api';
 
 let webContainerInstance = null;
 let initializationPromise = null;
+let initializationTimeout = null;
 
 const initializeWebContainer = async () => {
     try {
         console.log('[WebContainer] Starting boot process...');
         
-        const bootPromise = WebContainer.boot({
-            workdirName: 'workspace',
+        // Create a promise that resolves/rejects with explicit tracking
+        const bootPromise = new Promise((resolve, reject) => {
+            const timeoutId = setTimeout(() => {
+                console.error('[WebContainer] TIMEOUT: boot() did not complete within 15s');
+                reject(new Error('WebContainer.boot() timeout - no response from boot() after 15s'));
+            }, 15000);
+            
+            WebContainer.boot({
+                workdirName: 'workspace',
+            })
+                .then(container => {
+                    clearTimeout(timeoutId);
+                    console.log('[WebContainer] Boot promise resolved successfully');
+                    resolve(container);
+                })
+                .catch(error => {
+                    clearTimeout(timeoutId);
+                    console.error('[WebContainer] Boot promise rejected:', error?.message);
+                    reject(error);
+                });
         });
         
-        // Add a timeout to catch hanging promises
-        const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('WebContainer.boot() timeout after 30s')), 30000)
-        );
-        
-        const container = await Promise.race([bootPromise, timeoutPromise]);
+        const container = await bootPromise;
         console.log('[WebContainer] Boot completed successfully');
         
         console.log('[WebContainer] Mounting initial file system...');

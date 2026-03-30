@@ -583,7 +583,8 @@ const Project = () => {
                         } catch (getContainerError) {
                             console.error('Failed to get/initialize WebContainer:', getContainerError?.message || getContainerError);
                             console.error('Container error stack:', getContainerError?.stack);
-                            throw getContainerError;
+                            // Continue anyway - we can still display files in the tree, just can't execute them
+                            console.log('Continuing with file tree display only (no execution)');
                         }
                         
                         setWebContainer(container);
@@ -598,19 +599,21 @@ const Project = () => {
                             } catch (mountSpecificError) {
                                 console.error('container.mount() failed:', mountSpecificError?.message || mountSpecificError);
                                 console.error('Mount error stack:', mountSpecificError?.stack);
-                                throw mountSpecificError;
+                                // Still update file tree even if mount failed
+                                console.log('Updating file tree display despite mount failure');
                             }
-                            
-                            setFileTree(prev => {
-                                // Use deep merge to properly handle nested structures
-                                const merged = deepMergeFileTree(prev, normalizedTree);
-                                console.log('Updated fileTree state with', Object.keys(merged).length, 'top-level items');
-                                return merged;
-                            });
                         } else {
-                            console.error('Container is null/undefined after getWebContainer()');
-                            throw new Error('WebContainer initialization returned null');
+                            console.warn('WebContainer unavailable - file tree display only');
                         }
+                        
+                        // Update file tree regardless of WebContainer status
+                        // This ensures files are visible even if execution is not possible
+                        setFileTree(prev => {
+                            // Use deep merge to properly handle nested structures
+                            const merged = deepMergeFileTree(prev, normalizedTree);
+                            console.log('Updated fileTree state with', Object.keys(merged).length, 'top-level items');
+                            return merged;
+                        });
                     } catch (mountError) {
                         console.error('FATAL: Error in file mounting process:', mountError?.message || mountError);
                         console.error('Full error:', mountError);
