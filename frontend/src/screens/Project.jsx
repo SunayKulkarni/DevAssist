@@ -576,14 +576,30 @@ const Project = () => {
                     try {
                         // Get the latest webContainer instance
                         console.log('Getting webContainer...');
-                        const container = await getWebContainer();
-                        console.log('Got container:', !!container);
+                        let container = null;
+                        try {
+                            container = await getWebContainer();
+                            console.log('Got container:', !!container);
+                        } catch (getContainerError) {
+                            console.error('Failed to get/initialize WebContainer:', getContainerError?.message || getContainerError);
+                            console.error('Container error stack:', getContainerError?.stack);
+                            throw getContainerError;
+                        }
+                        
                         setWebContainer(container);
 
                         if (container) {
-                            console.log('Mounting normalized tree to container...');
-                            await container.mount(normalizedTree);
-                            console.log('Files mounted to container successfully');
+                            console.log('Container ready, attempting to mount normalized tree...');
+                            console.log('Mounting items:', Object.keys(normalizedTree).length);
+                            
+                            try {
+                                await container.mount(normalizedTree);
+                                console.log('Files mounted to container successfully');
+                            } catch (mountSpecificError) {
+                                console.error('container.mount() failed:', mountSpecificError?.message || mountSpecificError);
+                                console.error('Mount error stack:', mountSpecificError?.stack);
+                                throw mountSpecificError;
+                            }
                             
                             setFileTree(prev => {
                                 // Use deep merge to properly handle nested structures
@@ -592,10 +608,12 @@ const Project = () => {
                                 return merged;
                             });
                         } else {
-                            console.error('Container is null after getWebContainer()');
+                            console.error('Container is null/undefined after getWebContainer()');
+                            throw new Error('WebContainer initialization returned null');
                         }
                     } catch (mountError) {
-                        console.error('Error mounting files to WebContainer:', mountError, mountError.stack);
+                        console.error('FATAL: Error in file mounting process:', mountError?.message || mountError);
+                        console.error('Full error:', mountError);
                     }
                 }
 
