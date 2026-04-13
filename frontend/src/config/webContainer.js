@@ -1,94 +1,110 @@
-import { WebContainer } from '@webcontainer/api';
+import { WebContainer, WritableStream } from '@webcontainer/api';
 
-let webContainerInstance = null;
-let initializationPromise = null;
-let initializationTimeout = null;
+// Store containers per project ID to avoid room conflicts
+const containersByProjectId = new Map();
+const initializationPromisesByProjectId = new Map();
 
-const initializeWebContainer = async () => {
+const initializeWebContainer = async (projectId) => {
     try {
-        console.log('[WebContainer] Starting boot process...');
+        console.log(`[WebContainer-${projectId}] Starting boot process...`);
         
         // Create a promise that resolves/rejects with explicit tracking
         const bootPromise = new Promise((resolve, reject) => {
             const timeoutId = setTimeout(() => {
-                console.error('[WebContainer] TIMEOUT: boot() did not complete within 15s');
-                reject(new Error('WebContainer.boot() timeout - no response from boot() after 15s'));
+                console.error(`[WebContainer-${projectId}] TIMEOUT: boot() did not complete within 15s`);
+                reject(new Error(`WebContainer.boot() timeout for project ${projectId}`));
             }, 15000);
             
             WebContainer.boot({
-                workdirName: 'workspace',
+                workdirName: `workspace-${projectId}`,
             })
                 .then(container => {
                     clearTimeout(timeoutId);
-                    console.log('[WebContainer] Boot promise resolved successfully');
+                    console.log(`[WebContainer-${projectId}] Boot promise resolved successfully`);
                     resolve(container);
                 })
                 .catch(error => {
                     clearTimeout(timeoutId);
-                    console.error('[WebContainer] Boot promise rejected:', error?.message);
+                    console.error(`[WebContainer-${projectId}] Boot promise rejected:`, error?.message);
                     reject(error);
                 });
         });
         
         const container = await bootPromise;
-        console.log('[WebContainer] Boot completed successfully');
+        console.log(`[WebContainer-${projectId}] Boot completed successfully`);
         
-        console.log('[WebContainer] Mounting initial file system...');
+        console.log(`[WebContainer-${projectId}] Mounting initial file system...`);
         await container.mount({
             'package.json': {
                 file: {
                     contents: JSON.stringify({
-                        name: 'workspace',
+                        name: `workspace-${projectId}`,
                         version: '1.0.0',
                         type: 'module'
                     }, null, 2)
                 }
             }
         });
-        console.log('[WebContainer] Initial mount completed');
+        console.log(`[WebContainer-${projectId}] Initial mount completed`);
 
         return container;
     } catch (error) {
-        console.error('[WebContainer] Initialization failed:', error?.message || error);
-        console.error('[WebContainer] Error stack:', error?.stack);
+        console.error(`[WebContainer-${projectId}] Initialization failed:`, error?.message || error);
+        console.error(`[WebContainer-${projectId}] Error stack:`, error?.stack);
         throw error;
     }
 };
 
-export const getWebContainer = async () => {
-    // If we already have an instance, return it
-    if (webContainerInstance) {
-        console.log('[WebContainer] Returning cached instance');
-        return webContainerInstance;
+export const getWebContainer = async (projectId) => {
+    if (!projectId) {
+        throw new Error('projectId is required');
     }
 
-    // If we're in the process of initializing, return the promise
-    if (initializationPromise) {
-        console.log('[WebContainer] Returning pending initialization promise');
-        return initializationPromise;
+    // If we already have an instance for this project, return it
+    if (containersByProjectId.has(projectId)) {
+        console.log(`[WebContainer-${projectId}] Returning cached instance`);
+        return containersByProjectId.get(projectId);
+    }
+
+    // If we're in the process of initializing for this project, return the promise
+    if (initializationPromisesByProjectId.has(projectId)) {
+        console.log(`[WebContainer-${projectId}] Returning pending initialization promise`);
+        return initializationPromisesByProjectId.get(projectId);
     }
 
     // Start initialization
-    console.log('[WebContainer] Starting new initialization...');
-    initializationPromise = initializeWebContainer()
+    console.log(`[WebContainer-${projectId}] Starting new initialization...`);
+    const initPromise = initializeWebContainer(projectId)
         .then(container => {
-            console.log('[WebContainer] Initialization promise resolved, caching instance');
-            webContainerInstance = container;
+            console.log(`[WebContainer-${projectId}] Initialization promise resolved, caching instance`);
+            containersByProjectId.set(projectId, container);
+            initializationPromisesByProjectId.delete(projectId);
             return container;
         })
         .catch(error => {
-            console.error('[WebContainer] Initialization promise rejected:', error?.message || error);
+            console.error(`[WebContainer-${projectId}] Initialization promise rejected:`, error?.message || error);
             // Reset initialization state on error
-            webContainerInstance = null;
-            initializationPromise = null;
+            containersByProjectId.delete(projectId);
+            initializationPromisesByProjectId.delete(projectId);
             throw error;
         });
 
-    return initializationPromise;
+    initializationPromisesByProjectId.set(projectId, initPromise);
+    return initPromise;
 };
 
 // Reset function for testing/development
-export const resetWebContainer = () => {
-    webContainerInstance = null;
-    initializationPromise = null;
+export const resetWebContainer = (projectId) => {
+    if (projectId) {
+        console.log(`[WebContainer-${projectId}] Resetting container`);
+        containersByProjectId.delete(projectId);
+        initializationPromisesByProjectId.delete(projectId);
+    } else {
+        console.log('[WebContainer] Resetting all containers');
+        containersByProjectId.clear();
+        initializationPromisesByProjectId.clear();
+    }
 };
+
+// Export WritableStream for use in components
+export { WritableStream };
