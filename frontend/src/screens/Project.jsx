@@ -5,7 +5,7 @@ import { initializeSocket, recieveMessage, sendMessage } from '../config/socket.
 import { UserContext } from '../context/user.context.jsx'
 import Markdown from 'markdown-to-jsx'
 import { RiFolder3Line, RiFolderOpenLine, RiFile3Line, RiAddLine } from 'react-icons/ri'
-import { getWebContainer, WritableStream } from '../config/webContainer.js'
+import { getWebContainer } from '../config/webContainer.js'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 

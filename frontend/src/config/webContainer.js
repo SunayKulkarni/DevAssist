@@ -1,4 +1,4 @@
-import { WebContainer, WritableStream } from '@webcontainer/api';
+import { WebContainer } from '@webcontainer/api';
 
 // Store containers per project ID to avoid room conflicts
 const containersByProjectId = new Map();
@@ -106,5 +106,3 @@ export const resetWebContainer = (projectId) => {
     }
 };
 
-// Export WritableStream for use in components
-export { WritableStream };
