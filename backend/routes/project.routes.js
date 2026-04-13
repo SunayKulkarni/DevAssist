@@ -32,4 +32,10 @@ router.get('/get-project/:projectId',
     projectController.getProjectById
 )
 
+router.put('/update-files/:projectId',
+    authMiddleware.authUser,
+    body('files').isObject().withMessage('Files must be an object'),
+    projectController.updateProjectFiles
+)
+
 export default router;
