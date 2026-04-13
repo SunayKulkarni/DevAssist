@@ -87,3 +87,37 @@ export const getProjectById = async (req, res) => {
         res.status(400).json({ error: err.message })
     }
 }
+
+export const updateProjectFiles = async (req, res) => {
+    const { projectId } = req.params;
+    const { files } = req.body;
+
+    try {
+        if (!files || typeof files !== 'object') {
+            return res.status(400).json({ error: 'Files must be a valid object' });
+        }
+
+        const loggedInUser = await userModel.findOne({ email: req.user.email });
+        const project = await projectModel.findById(projectId);
+
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+
+        // Check if user is part of the project
+        if (!project.users.includes(loggedInUser._id) && project.users[0].toString() !== loggedInUser._id.toString()) {
+            return res.status(403).json({ error: 'Unauthorized to update this project' });
+        }
+
+        project.files = files;
+        await project.save();
+
+        return res.status(200).json({ 
+            message: 'Project files updated successfully',
+            project 
+        });
+    } catch (err) {
+        console.error('Error updating project files:', err);
+        res.status(500).json({ error: err.message });
+    }
+}
