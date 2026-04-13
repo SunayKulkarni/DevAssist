@@ -5,7 +5,7 @@ import { initializeSocket, recieveMessage, sendMessage } from '../config/socket.
 import { UserContext } from '../context/user.context.jsx'
 import Markdown from 'markdown-to-jsx'
 import { RiFolder3Line, RiFolderOpenLine, RiFile3Line, RiAddLine } from 'react-icons/ri'
-import { getWebContainer } from '../config/webContainer.js'
+import { getWebContainer, WritableStream } from '../config/webContainer.js'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
@@ -508,9 +508,9 @@ const Project = () => {
 
         const initializeContainer = async () => {
             try {
-                const container = await getWebContainer();
+                const container = await getWebContainer(project._id);
                 setWebContainer(container);
-                console.log("Container started");
+                console.log("Container started for project:", project._id);
 
                 // Initialize file system with project files
                 if (project.files) {
@@ -578,8 +578,8 @@ const Project = () => {
                         console.log('Getting webContainer...');
                         let container = null;
                         try {
-                            container = await getWebContainer();
-                            console.log('Got container:', !!container);
+                            container = await getWebContainer(projectId);
+                            console.log('Got container for project:', projectId, '- ready:', !!container);
                         } catch (getContainerError) {
                             console.error('Failed to get/initialize WebContainer:', getContainerError?.message || getContainerError);
                             console.error('Container error stack:', getContainerError?.stack);
@@ -612,6 +612,14 @@ const Project = () => {
                             // Use deep merge to properly handle nested structures
                             const merged = deepMergeFileTree(prev, normalizedTree);
                             console.log('Updated fileTree state with', Object.keys(merged).length, 'top-level items');
+                            
+                            // Save the updated file tree to backend
+                            axios.put(`/projects/update-files/${projectId}`, {
+                                files: merged
+                            }).catch(error => {
+                                console.error('Failed to save files to backend:', error);
+                            });
+                            
                             return merged;
                         });
                     } catch (mountError) {
@@ -828,6 +836,14 @@ const Project = () => {
             await cleanupContainer();
             setOutputLogs([]); // Clear previous logs
 
+            if (!projectId) {
+                throw new Error('Project ID is missing');
+            }
+
+            if (!webContainer) {
+                throw new Error('WebContainer not initialized. Please refresh and try again.');
+            }
+
             setContainerStatus('installing');
             setStatusMessage('Setting up environment...');
             setOutputLogs(prev => [...prev, 'Setting up environment...']);
@@ -842,25 +858,58 @@ const Project = () => {
             setFileTree(runnableTree);
 
             // First mount the patched file tree
-            await webContainer?.mount(runnableTree);
+            try {
+                await webContainer.mount(runnableTree);
+                console.log('Files mounted successfully');
+            } catch (mountError) {
+                console.error('Mount error:', mountError);
+                throw new Error('Failed to mount files to container: ' + mountError.message);
+            }
 
             // Install dependencies
             setStatusMessage('Installing dependencies...');
             setOutputLogs(prev => [...prev, 'Installing dependencies...']);
-            const installProcess = await webContainer?.spawn('npm', ['install']);
+            
+            let installProcess;
+            try {
+                installProcess = await webContainer.spawn('npm', ['install']);
+                console.log('npm install process spawned:', !!installProcess);
+            } catch (spawnError) {
+                console.error('Failed to spawn npm install:', spawnError);
+                throw new Error('Failed to start installation: ' + spawnError.message);
+            }
 
-            if (installProcess && installProcess.output) {
-                installProcess.output.pipeTo(new WritableStream({
-                    write(chunk) {
-                        console.log(chunk);
-                        setOutputLogs(prev => [...prev, chunk]);
-                    }
-                }));
+            if (!installProcess) {
+                throw new Error('Installation process is null - spawn may have failed silently');
+            }
+
+            try {
+                if (installProcess.output) {
+                    installProcess.output.pipeTo(new WritableStream({
+                        write(chunk) {
+                            console.log('[npm install]', chunk);
+                            setOutputLogs(prev => [...prev, chunk]);
+                        },
+                        error(error) {
+                            console.error('Output stream error:', error);
+                        }
+                    }));
+                }
 
                 setCurrentProcess(installProcess);
+                
+                // Wait for installation to complete with timeout
+                const installTimeout = setTimeout(() => {
+                    console.error('npm install timeout after 5 minutes');
+                    if (installProcess) installProcess.kill();
+                }, 5 * 60 * 1000);
+                
                 await installProcess.exit;
-            } else {
-                throw new Error('Failed to start installation process');
+                clearTimeout(installTimeout);
+                console.log('npm install completed');
+            } catch (installWaitError) {
+                console.error('Error waiting for npm install:', installWaitError);
+                throw new Error('Installation process failed: ' + installWaitError.message);
             }
 
             setCurrentProcess(null);
@@ -871,7 +920,11 @@ const Project = () => {
             setOutputLogs(prev => [...prev, 'Starting server...']);
 
             if (currentProcess) {
-                currentProcess.kill()
+                try {
+                    await currentProcess.kill();
+                } catch (e) {
+                    console.warn('Error killing previous process:', e);
+                }
             }
 
             let runCommand = 'npm';
@@ -887,34 +940,66 @@ const Project = () => {
                 setOutputLogs(prev => [...prev, 'No start script found. Using live-server fallback...']);
             }
 
-            const tempRunProcess = await webContainer?.spawn(runCommand, runArgs);
+            let tempRunProcess;
+            try {
+                tempRunProcess = await webContainer.spawn(runCommand, runArgs);
+                console.log('Server process spawned:', !!tempRunProcess);
+            } catch (spawnError) {
+                console.error('Failed to spawn server:', spawnError);
+                throw new Error('Failed to start server: ' + spawnError.message);
+            }
 
-            if (tempRunProcess && tempRunProcess.output) {
-                tempRunProcess.output.pipeTo(new WritableStream({
-                    write(chunk) {
-                        console.log(chunk);
-                        setOutputLogs(prev => [...prev, chunk]);
-                    }
-                }));
+            if (!tempRunProcess) {
+                throw new Error('Server process is null - spawn may have failed silently');
+            }
+
+            try {
+                if (tempRunProcess.output) {
+                    tempRunProcess.output.pipeTo(new WritableStream({
+                        write(chunk) {
+                            console.log('[server]', chunk);
+                            setOutputLogs(prev => [...prev, chunk]);
+                        },
+                        error(error) {
+                            console.error('Server output stream error:', error);
+                        }
+                    }));
+                }
 
                 setCurrentProcess(tempRunProcess);
 
-                webContainer.on('server-ready', (port, url) => {
+                // Set up server-ready listener
+                const serverReadyListener = (port, url) => {
                     console.log(`Server ready at ${url}`);
                     setOutputLogs(prev => [...prev, `Server ready at ${url}`]);
                     setIframeUrl(url);
                     setContainerStatus('running');
                     setStatusMessage('Server is running');
-                });
-            } else {
-                throw new Error('Failed to start server process');
+                };
+
+                // Add listener for server ready event
+                if (webContainer && webContainer.on) {
+                    webContainer.on('server-ready', serverReadyListener);
+                } else {
+                    console.warn('WebContainer does not support server-ready event listener');
+                    // Fallback: assume server is running after a short delay
+                    setTimeout(() => {
+                        setContainerStatus('running');
+                        setStatusMessage('Server is running');
+                        setIframeUrl(`http://localhost:3000`);
+                    }, 3000);
+                }
+
+            } catch (processSetupError) {
+                console.error('Error setting up server process:', processSetupError);
+                throw new Error('Error starting server: ' + processSetupError.message);
             }
 
         } catch (error) {
             console.error('Error running application:', error);
             setContainerStatus('error');
             setStatusMessage('Error: ' + error.message);
-            setOutputLogs(prev => [...prev, `Error: ${error.message}`]);
+            setOutputLogs(prev => [...prev, `❌ Error: ${error.message}`]);
             setCurrentProcess(null);
         }
     };
