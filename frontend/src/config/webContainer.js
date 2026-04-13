@@ -7,27 +7,44 @@ const initializationPromisesByProjectId = new Map();
 const initializeWebContainer = async (projectId) => {
     try {
         console.log(`[WebContainer-${projectId}] Starting boot process...`);
+        console.log(`[WebContainer-${projectId}] Environment: ${typeof window !== 'undefined' ? 'browser' : 'server'}`);
+        
+        // Check if WebContainer API is available
+        if (typeof WebContainer === 'undefined') {
+            throw new Error('WebContainer API is not available. Make sure @webcontainer/api is properly loaded.');
+        }
+        
+        if (typeof WebContainer.boot !== 'function') {
+            throw new Error('WebContainer.boot is not a function');
+        }
         
         // Create a promise that resolves/rejects with explicit tracking
         const bootPromise = new Promise((resolve, reject) => {
             const timeoutId = setTimeout(() => {
-                console.error(`[WebContainer-${projectId}] TIMEOUT: boot() did not complete within 15s`);
-                reject(new Error(`WebContainer.boot() timeout for project ${projectId}`));
-            }, 15000);
+                console.error(`[WebContainer-${projectId}] TIMEOUT: boot() did not complete within 30s`);
+                reject(new Error(`WebContainer.boot() timeout for project ${projectId} - This may indicate a network issue or the WebContainer API is unavailable`));
+            }, 30000);
             
-            WebContainer.boot({
-                workdirName: `workspace-${projectId}`,
-            })
-                .then(container => {
-                    clearTimeout(timeoutId);
-                    console.log(`[WebContainer-${projectId}] Boot promise resolved successfully`);
-                    resolve(container);
+            try {
+                WebContainer.boot({
+                    workdirName: `workspace-${projectId}`,
                 })
-                .catch(error => {
-                    clearTimeout(timeoutId);
-                    console.error(`[WebContainer-${projectId}] Boot promise rejected:`, error?.message);
-                    reject(error);
-                });
+                    .then(container => {
+                        clearTimeout(timeoutId);
+                        console.log(`[WebContainer-${projectId}] Boot promise resolved successfully`);
+                        resolve(container);
+                    })
+                    .catch(error => {
+                        clearTimeout(timeoutId);
+                        console.error(`[WebContainer-${projectId}] Boot promise rejected:`, error?.message);
+                        console.error(`[WebContainer-${projectId}] Error details:`, error);
+                        reject(error);
+                    });
+            } catch (syncError) {
+                clearTimeout(timeoutId);
+                console.error(`[WebContainer-${projectId}] Synchronous error during boot:`, syncError?.message);
+                reject(syncError);
+            }
         });
         
         const container = await bootPromise;

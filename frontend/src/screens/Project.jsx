@@ -39,6 +39,8 @@ const Project = () => {
     const [currentFile, setCurrentFile] = useState(null)
     const [openFiles, setOpenFiles] = useState([])
     const [webContainer, setWebContainer] = useState(null)
+    const [initializationError, setInitializationError] = useState(null)
+    const [isInitializing, setIsInitializing] = useState(false)
 
     // Add new state for file operations
     const [isFileMenuOpen, setIsFileMenuOpen] = useState(false);
@@ -508,17 +510,36 @@ const Project = () => {
 
         const initializeContainer = async () => {
             try {
+                setIsInitializing(true);
+                setInitializationError(null);
+                console.log("[Project] Starting WebContainer initialization for project:", project._id);
+                
                 const container = await getWebContainer(project._id);
+                
+                if (!container) {
+                    throw new Error('WebContainer returned null');
+                }
+                
                 setWebContainer(container);
-                console.log("Container started for project:", project._id);
+                setIsInitializing(false);
+                console.log("[Project] Container initialized successfully for project:", project._id);
 
                 // Initialize file system with project files
-                if (project.files) {
-                    await container.mount(project.files);
-                    setFileTree(project.files);
+                if (project.files && Object.keys(project.files).length > 0) {
+                    try {
+                        await container.mount(project.files);
+                        setFileTree(project.files);
+                        console.log("[Project] Project files mounted successfully");
+                    } catch (mountError) {
+                        console.warn("[Project] Warning: couldn't mount project files:", mountError?.message);
+                        // Don't fail initialization if files can't be mounted
+                    }
                 }
             } catch (error) {
-                console.error("Failed to initialize WebContainer:", error);
+                console.error("[Project] Failed to initialize WebContainer:", error?.message || error);
+                console.error("[Project] Full error:", error);
+                setIsInitializing(false);
+                setInitializationError(error?.message || 'Failed to initialize WebContainer');
             }
         };
 
@@ -833,15 +854,20 @@ const Project = () => {
     // Update the run button handler
     const handleRunServer = async () => {
         try {
-            await cleanupContainer();
-            setOutputLogs([]); // Clear previous logs
-
             if (!projectId) {
                 throw new Error('Project ID is missing');
             }
 
+            if (isInitializing) {
+                throw new Error('WebContainer is still initializing. Please wait a moment...');
+            }
+
+            if (initializationError) {
+                throw new Error(`WebContainer initialization failed: ${initializationError}. Please click Retry to try again.`);
+            }
+
             if (!webContainer) {
-                throw new Error('WebContainer not initialized. Please refresh and try again.');
+                throw new Error('WebContainer not initialized. Please refresh and try again. If the problem persists, check browser console for errors.');
             }
 
             setContainerStatus('installing');
@@ -1100,6 +1126,40 @@ const Project = () => {
             }
         } catch (error) {
             setStatusMessage('Error during force stop: ' + error.message);
+        }
+    };
+
+    // Retry WebContainer initialization handler
+    const handleRetryInitialization = async () => {
+        try {
+            setIsInitializing(true);
+            setInitializationError(null);
+            console.log('[Project] Retrying WebContainer initialization for project:', project._id);
+            
+            const container = await getWebContainer(project._id);
+            
+            if (!container) {
+                throw new Error('WebContainer returned null');
+            }
+            
+            setWebContainer(container);
+            setIsInitializing(false);
+            console.log('[Project] Container re-initialized successfully for project:', project._id);
+
+            // Initialize file system with project files
+            if (project.files && Object.keys(project.files).length > 0) {
+                try {
+                    await container.mount(project.files);
+                    setFileTree(project.files);
+                    console.log('[Project] Project files mounted successfully');
+                } catch (mountError) {
+                    console.warn('[Project] Warning: couldn\'t mount project files:', mountError?.message);
+                }
+            }
+        } catch (error) {
+            console.error('[Project] Retry failed:', error?.message || error);
+            setIsInitializing(false);
+            setInitializationError(error?.message || 'Failed to initialize WebContainer. Please try again.');
         }
     };
 
@@ -1368,6 +1428,31 @@ const Project = () => {
                         </div>
 
                         <div className="actions flex gap-2">
+                            {/* Initialization Error Banner */}
+                            {initializationError && (
+                                <div className="w-full bg-red-900/30 border border-red-500/50 rounded-lg p-3 flex items-center justify-between gap-2 mb-2">
+                                    <div className="flex items-center gap-2 flex-1">
+                                        <i className="ri-error-warning-line text-red-400 text-lg flex-shrink-0" />
+                                        <div className="text-sm text-red-300">
+                                            <p className="font-medium">WebContainer not ready</p>
+                                            <p className="text-xs text-red-400 mt-1">{initializationError}</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={handleRetryInitialization}
+                                        disabled={isInitializing}
+                                        className="px-3 py-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded transition-colors flex-shrink-0"
+                                    >
+                                        {isInitializing ? 'Retrying...' : 'Retry'}
+                                    </button>
+                                </div>
+                            )}
+                            {isInitializing && !initializationError && (
+                                <div className="w-full bg-blue-900/30 border border-blue-500/50 rounded-lg p-3 flex items-center gap-2 mb-2">
+                                    <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                                    <p className="text-sm text-blue-300">Initializing WebContainer...</p>
+                                </div>
+                            )}
                             <button
                                 onClick={handleRunServer}
                                 className={
@@ -1380,7 +1465,7 @@ const Project = () => {
                                     text-white font-medium shadow-lg hover:shadow-xl
                                     disabled:opacity-50 disabled:cursor-not-allowed`
                                 }
-                                disabled={containerStatus === 'installing' || containerStatus === 'starting'}
+                                disabled={containerStatus === 'installing' || containerStatus === 'starting' || isInitializing || !!initializationError}
                             >
                                 <div className="flex items-center gap-2">
                                     {containerStatus === 'installing' || containerStatus === 'starting' ? (
