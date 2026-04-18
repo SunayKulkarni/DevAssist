@@ -14,6 +14,8 @@ const Project = () => {
     const location = useLocation()
 
     const [isSidePanelOpen, setIsSidePanelOpen] = useState(false)
+    const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true) // Toggle left chat panel on mobile
+    const [isFileExplorerOpen, setIsFileExplorerOpen] = useState(true) // Toggle file explorer on mobile
     const [isModalOpen, setIsModalOpen] = useState(false) // <-- Added state for modal
     const [selectedUserId, setSelectedUserId] = useState(new Set()) // <-- Store selected user ID
     const [users, setUsers] = useState([]) // <-- Store users data
@@ -1191,16 +1193,51 @@ const Project = () => {
     };
 
     return (
-        <main className="h-screen min-h-screen w-screen flex bg-slate-900 text-slate-100">
-            {/* Left Panel: Chat & Collaborators */}
-            <section className="left relative flex flex-col h-full w-96 bg-gradient-to-br from-blue-900 via-slate-900 to-blue-800 shadow-2xl rounded-l-2xl border-r border-blue-900/70 backdrop-blur-md">
+        <main className="h-screen min-h-screen w-screen flex flex-col md:flex-row bg-slate-900 text-slate-100">
+            {/* Mobile Top Bar */}
+            <div className="md:hidden flex items-center justify-between gap-2 px-4 py-3 bg-gradient-to-r from-blue-900 via-slate-900 to-blue-800 border-b border-blue-900/70 z-50">
+                <button 
+                    onClick={() => setIsLeftPanelOpen(!isLeftPanelOpen)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition"
+                    title="Toggle Chat"
+                >
+                    <i className="ri-chat-3-line"></i>
+                </button>
+                <span className="text-sm font-semibold text-blue-300">{project?.name}</span>
+                <button 
+                    onClick={() => setIsFileExplorerOpen(!isFileExplorerOpen)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition"
+                    title="Toggle Files"
+                >
+                    <i className="ri-file-list-line"></i>
+                </button>
+            </div>
+
+            {/* Mobile backdrop overlay for left panel */}
+            {isLeftPanelOpen && (
+                <div 
+                    className="fixed md:hidden inset-0 bg-black/60 z-35 transition-opacity"
+                    onClick={() => setIsLeftPanelOpen(false)}
+                />
+            )}
+
+            {/* Left Panel: Chat & Collaborators - Hidden on mobile, shown on md+ */}
+            <section className={`left absolute md:relative left-0 top-16 md:top-0 bottom-0 md:bottom-auto flex flex-col h-[calc(100vh-64px)] md:h-full w-96 md:w-96 bg-gradient-to-br from-blue-900 via-slate-900 to-blue-800 shadow-2xl rounded-l-2xl border-r border-blue-900/70 backdrop-blur-md transition-all duration-300 z-40 md:z-auto
+                ${isLeftPanelOpen ? 'md:flex' : 'hidden md:flex'}`}>
                 {/* Header Box */}
-                <header className="flex flex-col items-center p-4 w-full gap-2 bg-gradient-to-br from-blue-900 via-slate-900 to-blue-800 shadow-2xl rounded-l-2xl border-r border-blue-900/70 backdrop-blur-md">
+                <header className="flex flex-col items-center p-4 w-full gap-2 bg-gradient-to-br from-blue-900 via-slate-900 to-blue-800 shadow-2xl rounded-l-2xl border-r border-blue-900/70 backdrop-blur-md relative">
                     <div className="flex justify-start absolute left-1 top-1">
                         <Link to="/" className="flex items-center gap-2 px-2 py-1 bg-blue-100 text-blue-500 rounded-full hover:bg-blue-200 transition">
                             <i className="ri-home-4-line text-lg"></i>
                         </Link>
                     </div>
+                    {/* Mobile close button */}
+                    <button
+                        onClick={() => setIsLeftPanelOpen(false)}
+                        className="md:hidden absolute right-1 top-1 p-2 hover:bg-slate-700/50 rounded-full transition"
+                    >
+                        <i className="ri-close-line text-xl text-slate-400"></i>
+                    </button>
                     <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1 bg-blue-100 text-blue-500 text-xs font-medium px-2 py-1 rounded-full">
                             <i className="ri-user-fill text-sm"></i>
@@ -1212,23 +1249,23 @@ const Project = () => {
                         <div className="text-lg font-semibold text-blue-500">{project?.name}</div>
                     </div>
 
-                    <div className="flex flex-row items-center justify-between w-full">
+                    <div className="flex flex-col md:flex-row gap-2 md:gap-2 items-center justify-between w-full">
                         {/* Add Collaborator Button */}
                         <button
                             onClick={() => setIsModalOpen(true)}
-                            className="flex gap-2 items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md transition duration-200 transform hover:scale-105"
+                            className="w-full md:flex-1 flex gap-2 items-center justify-center md:justify-start px-3 md:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md transition duration-200 transform hover:scale-105"
                         >
                             <i className="ri-user-add-line text-base"></i>
-                            <span className="text-sm">Add Collaborator</span>
+                            <span className="text-xs md:text-sm">Add Collaborator</span>
                         </button>
 
                         {/* Show Collaborators Button */}
                         <button
                             onClick={() => setIsSidePanelOpen(!isSidePanelOpen)}
-                            className="flex gap-2 items-center px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg shadow-md transition duration-200 transform hover:scale-105"
+                            className="w-full md:flex-1 flex gap-2 items-center justify-center md:justify-start px-3 md:px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg shadow-md transition duration-200 transform hover:scale-105"
                         >
                             <i className="ri-group-line text-base"></i>
-                            <span className="text-sm">View Collaborators</span>
+                            <span className="text-xs md:text-sm">View Collaborators</span>
                         </button>
                     </div>
 
@@ -1285,26 +1322,34 @@ const Project = () => {
                         </div>
                         {/* Fixed input at the bottom */}
                         <div className="w-full flex justify-center pt-2 pb-2 bg-slate-900 border-t border-slate-700">
-                            <div className="flex w-full max-w-[400px] gap-2">
+                            <div className="flex w-full px-2 md:px-0 max-w-[400px] gap-1 md:gap-2">
                                 <input
                                     value={message}
                                     onChange={(e) => setMessage(e.target.value)}
                                     onKeyDown={(e) => { if (e.key === 'Enter') send() }}
-                                    className="flex-grow px-4 py-3 rounded-l-xl border border-slate-700 outline-none focus:ring-2 focus:ring-blue-400 bg-slate-800 text-blue-100 shadow focus:bg-slate-900 transition"
-                                    type="text" placeholder="To ask ai Start your message with @ai"
+                                    className="flex-grow px-2 md:px-4 py-2 md:py-3 rounded-l-xl text-xs md:text-sm border border-slate-700 outline-none focus:ring-2 focus:ring-blue-400 bg-slate-800 text-blue-100 shadow focus:bg-slate-900 transition"
+                                    type="text" placeholder="@ai to ask AI"
                                 />
                                 <button
                                     onClick={send}
-                                    className="px-7 bg-blue-500 hover:bg-blue-600 text-white rounded-r-xl shadow transition"
+                                    className="px-3 md:px-7 py-2 md:py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-r-xl shadow transition flex items-center justify-center"
+                                    title="Send"
                                 >
-                                    <i className="ri-send-plane-fill"></i>
+                                    <i className="ri-send-plane-fill text-sm md:text-base"></i>
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
+                {/* Mobile backdrop overlay for side panel */}
+                {isSidePanelOpen && (
+                    <div 
+                        className="fixed md:hidden inset-0 bg-black/60 z-25 transition-opacity"
+                        onClick={() => setIsSidePanelOpen(false)}
+                    />
+                )}
                 {/* Side Panel: Collaborators */}
-                <div className={`sidePanel w-full h-full flex flex-col gap-2 bg-slate-800 shadow-xl absolute transition-all duration-300 z-30 ${isSidePanelOpen ? 'left-0' : '-left-full'} top-0 rounded-l-2xl`}>
+                <div className={`sidePanel w-80 md:w-full h-full flex flex-col gap-2 bg-slate-800 shadow-xl absolute transition-all duration-300 z-30 ${isSidePanelOpen ? 'left-0' : '-left-full'} top-0 rounded-l-2xl`}>
                     <header className="flex justify-between items-center p-4 w-full bg-gradient-to-br from-blue-900 via-slate-900 to-blue-800 shadow-2xl rounded-l-2xl border-r border-blue-900/70 backdrop-blur-md">
                         <h1 className="font-semibold text-lg text-blue-300">Collaborators</h1>
                         <button onClick={() => setIsSidePanelOpen(!isSidePanelOpen)} className="p-2 rounded-full hover:bg-slate-700 transition">
@@ -1375,8 +1420,9 @@ const Project = () => {
             </section>
             {/* File Explorer & Code Editor */}
             <section className="flex flex-grow h-full">
-                {/* File Explorer */}
-                <div className="explorer h-full w-64 bg-slate-800/50 border-r border-slate-700/50 shadow-lg flex flex-col">
+                {/* File Explorer - Hidden on mobile, shown on md+ */}
+                <div className={`explorer hidden md:flex h-full w-64 bg-slate-800/50 border-r border-slate-700/50 shadow-lg flex-col transition-all duration-300
+                    ${isFileExplorerOpen ? 'md:flex' : 'md:hidden'}`}>
                     {/* File Explorer Header */}
                     <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700/50">
                         <div className="flex items-center gap-2">
@@ -1415,23 +1461,67 @@ const Project = () => {
                     </div>
                 </div>
 
+                {/* Mobile File Explorer Backdrop */}
+                {isFileExplorerOpen && (
+                    <div 
+                        className="fixed md:hidden inset-0 bg-black/60 z-30 transition-opacity"
+                        onClick={() => setIsFileExplorerOpen(false)}
+                    />
+                )}
+                {/* Mobile File Explorer Overlay */}
+                <div className={`fixed md:hidden left-0 top-16 bottom-0 w-72 bg-slate-800/95 shadow-xl flex-col transition-all duration-300 z-40 overflow-y-auto
+                    ${isFileExplorerOpen ? 'flex' : 'hidden'}`}>
+                    {/* Mobile File Explorer Header */}
+                    <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700/50 sticky top-0">
+                        <div className="flex items-center gap-2">
+                            <RiFolder3Line className="text-blue-400" />
+                            <span className="text-sm font-medium text-blue-300">Files</span>
+                        </div>
+                        <button
+                            onClick={() => setIsFileExplorerOpen(false)}
+                            className="p-1.5 hover:bg-slate-700/50 rounded-lg transition-colors"
+                        >
+                            <i className="ri-close-line text-slate-400" />
+                        </button>
+                    </div>
+                    {/* Mobile File Tree */}
+                    <div className="flex-grow overflow-y-auto p-2 space-y-1">
+                        {!fileTree || Object.keys(fileTree).length === 0 ? (
+                            <div className="text-slate-400 text-center py-4">
+                                <div className="text-sm mb-2">No files found.</div>
+                                <div className="text-xs text-slate-500">Click the + button to create a new file</div>
+                            </div>
+                        ) : (
+                            renderFileTree(fileTree)
+                        )}
+                    </div>
+                </div>
+
                 {/* Code Editor */}
-                <div ref={resizerRef} style={{ width: editorWidth, minWidth: 300, maxWidth: 900, transition: isResizing ? 'none' : 'width 0.2s' }}
+                <div ref={resizerRef} style={{ width: editorWidth, minWidth: 280, maxWidth: 900, transition: isResizing ? 'none' : 'width 0.2s' }}
                     className="code-editor flex flex-col flex-grow h-full bg-slate-900 relative">
-                    {/* Resizer */}
+                    {/* Resizer - Hide on mobile */}
                     <div
                         style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 6, cursor: 'ew-resize', zIndex: 10 }}
                         onMouseDown={() => setIsResizing(true)}
-                        className="bg-blue-900/10 hover:bg-blue-500/30 transition-colors"
+                        className="hidden md:block bg-blue-900/10 hover:bg-blue-500/30 transition-colors"
                     />
                     {/* Editor Tabs */}
                     <div className="flex border-b border-slate-800 bg-slate-800/50 overflow-x-auto">
+                        {/* Mobile File Explorer Toggle */}
+                        <button
+                            onClick={() => setIsFileExplorerOpen(!isFileExplorerOpen)}
+                            className="md:hidden flex items-center justify-center gap-2 px-3 py-2 text-slate-400 hover:text-blue-400 hover:bg-slate-700/50 transition-colors flex-shrink-0"
+                            title="Toggle File Explorer"
+                        >
+                            <i className="ri-file-list-line text-base"></i>
+                        </button>
 
                         <div className="bottom flex flex-grow">
                             {openFiles.map((file) => (
                                 <div
                                     key={file}
-                                    className={`group flex items-center gap-2 px-4 py-2 border-r border-slate-700/50 min-w-[120px] max-w-[200px]
+                                    className={`group flex items-center gap-2 px-3 md:px-4 py-2 border-r border-slate-700/50 min-w-[100px] md:min-w-[120px] max-w-[180px] md:max-w-[200px]
                                         ${currentFile === file
                                             ? 'bg-slate-900 text-blue-300'
                                             : 'bg-slate-800/50 text-slate-400 hover:text-slate-300'
@@ -1483,31 +1573,38 @@ const Project = () => {
                             <button
                                 onClick={handleRunServer}
                                 className={
-                                    `relative flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200
+                                    `relative flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg transition-all duration-200 w-full md:w-auto justify-center md:justify-start
                                     ${containerStatus === 'running'
                                         ? 'bg-green-600 hover:bg-green-700'
                                         : containerStatus === 'error'
                                             ? 'bg-red-600 hover:bg-red-700'
                                             : 'bg-blue-600 hover:bg-blue-700'}
                                     text-white font-medium shadow-lg hover:shadow-xl
-                                    disabled:opacity-50 disabled:cursor-not-allowed`
+                                    disabled:opacity-50 disabled:cursor-not-allowed text-sm md:text-base`
                                 }
                                 disabled={containerStatus === 'installing' || containerStatus === 'starting' || isInitializing || !!initializationError}
                             >
                                 <div className="flex items-center gap-2">
                                     {containerStatus === 'installing' || containerStatus === 'starting' ? (
-                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                     ) : containerStatus === 'running' ? (
-                                        <i className="ri-check-line text-lg" />
+                                        <i className="ri-check-line text-lg md:text-lg" />
                                     ) : containerStatus === 'error' ? (
-                                        <i className="ri-error-warning-line text-lg" />
+                                        <i className="ri-error-warning-line text-lg md:text-lg" />
                                     ) : (
-                                        <i className="ri-play-line text-lg" />
+                                        <i className="ri-play-line text-lg md:text-lg" />
                                     )}
-                                    <span>
+                                    <span className="hidden md:inline">
                                         {containerStatus === 'installing' ? 'Installing...' :
                                             containerStatus === 'starting' ? 'Starting...' :
                                                 containerStatus === 'running' ? 'Running' :
+                                                    containerStatus === 'error' ? 'Error' :
+                                                        'Run'}
+                                    </span>
+                                    <span className="md:hidden">
+                                        {containerStatus === 'installing' ? 'Install...' :
+                                            containerStatus === 'starting' ? 'Start...' :
+                                                containerStatus === 'running' ? 'Run' :
                                                     containerStatus === 'error' ? 'Error' :
                                                         'Run'}
                                     </span>
