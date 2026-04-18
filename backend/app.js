@@ -14,6 +14,13 @@ const app = express();
 
 app.use(cors()) // middleware for enabling CORS
 
+// Add headers required for WebContainer SharedArrayBuffer support
+app.use((req, res, next) => {
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+    next();
+});
+
 app.use(morgan('dev'))
 
 app.use(express.json());

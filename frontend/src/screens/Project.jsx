@@ -5,7 +5,7 @@ import { initializeSocket, recieveMessage, sendMessage } from '../config/socket.
 import { UserContext } from '../context/user.context.jsx'
 import Markdown from 'markdown-to-jsx'
 import { RiFolder3Line, RiFolderOpenLine, RiFile3Line, RiAddLine } from 'react-icons/ri'
-import { getWebContainer } from '../config/webContainer.js'
+import { getWebContainer, cleanupWebContainer } from '../config/webContainer.js'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
@@ -669,9 +669,14 @@ const Project = () => {
         recieveMessage('chat-history', handleChatHistory);
         recieveMessage('project-message', handleProjectMessage);
 
-        // Cleanup function - remove listeners when project changes
+        // Cleanup function - remove listeners and cleanup containers when project changes
         return () => {
-            console.log('Cleaning up socket listeners for project:', project._id);
+            console.log('Cleaning up socket listeners and WebContainer for project:', project._id);
+            try {
+                cleanupWebContainer();
+            } catch (error) {
+                console.warn('Error during WebContainer cleanup:', error);
+            }
             // Listeners will be re-registered on next render with new project
         };
     }, [project?._id, user?.email]);
@@ -863,7 +868,18 @@ const Project = () => {
             }
 
             if (initializationError) {
-                throw new Error(`WebContainer initialization failed: ${initializationError}. Please click Retry to try again.`);
+                const errorMsg = initializationError.toLowerCase();
+                const isManyInstances = errorMsg.includes('already booted') || errorMsg.includes('max') || errorMsg.includes('instance');
+                const isCoepError = errorMsg.includes('cross-origin') || errorMsg.includes('coep') || errorMsg.includes('coop') || errorMsg.includes('sharedarraybuffer') || errorMsg.includes('cannot be serialized');
+                
+                let suggestion = ' Please click Retry to try again.';
+                if (isManyInstances) {
+                    suggestion = ' You may have too many projects open. Try closing other tabs or refreshing the page, then click Retry.';
+                } else if (isCoepError) {
+                    suggestion = ' This is a server configuration issue. The server needs to send proper security headers. Try refreshing the page, or contact support if the problem persists.';
+                }
+                
+                throw new Error(`WebContainer initialization failed: ${initializationError}.${suggestion}`);
             }
 
             if (!webContainer) {
