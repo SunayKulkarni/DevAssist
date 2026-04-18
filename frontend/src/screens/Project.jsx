@@ -195,11 +195,22 @@ const Project = () => {
             users: Array.from(selectedUserId)
         })
             .then(response => {
-                console.log(response.data)
-                setIsModalOpen(false)
+                console.log('Collaborators added successfully:', response.data);
+                
+                // Update the project state with new users
+                if (response.data.project) {
+                    setProject(response.data.project);
+                }
+                
+                // Clear selected users
+                setSelectedUserId(new Set());
+                
+                // Close modal
+                setIsModalOpen(false);
             })
             .catch(error => {
-                console.log(error)
+                console.error('Error adding collaborators:', error);
+                alert('Failed to add collaborators: ' + (error.response?.data?.error || error.message));
             })
     }
 
